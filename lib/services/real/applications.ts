@@ -198,7 +198,7 @@ export const realApplications = {
     const { job } = detail;
     if (job.status !== "Open") throw new ServiceError("This role is not accepting applications right now.");
     if (detail.existingApplicationId) throw new ServiceError("You have already applied to this role.");
-    // NOTE: eligibility is computed in the browser for now; it must move server-side before launch.
+    // This pre-check only gives a friendly message. The database recomputes eligibility itself (migration 0008) and ignores these values.
     const eligibility = engine.checkEligibility({ ...applicant, noticeDays: input.noticeDays }, job);
     if (!eligibility.eligible && !job.allowIneligible) throw new ServiceError("You do not meet the hard requirements for this role.");
 
