@@ -1,27 +1,10 @@
 "use client";
 import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useSearchParams } from "next/navigation";
 import type { Role } from "@/types";
 import { authService } from "@/lib/services/authService";
-import { Field } from "@/components/ui/field";
 import { toast } from "@/components/ui/toaster";
 import { DemoButtons } from "./demo-buttons";
-
-const loginSchema = z.object({
-  email: z.string().min(1, "Enter your email.").email("That does not look like an email address."),
-  password: z.string().min(1, "Enter your password."),
-});
-const signupSchema = z.object({
-  name: z.string().min(2, "Enter your full name."),
-  email: z.string().min(1, "Enter your email.").email("That does not look like an email address."),
-  password: z.string().min(8, "Use at least 8 characters."),
-  company: z.string().optional(),
-});
-type FormValues = { name?: string; email: string; password: string; company?: string };
 
 function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void }) {
   return (
@@ -37,29 +20,21 @@ function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void 
 }
 
 function Inner({ mode }: { mode: "login" | "signup" }) {
-  const router = useRouter();
   const params = useSearchParams();
   const [role, setRole] = useState<Role>(params.get("role") === "recruiter" ? "recruiter" : "applicant");
-  const [error, setError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(mode === "login" ? loginSchema : signupSchema) as never,
-  });
+  const [busy, setBusy] = useState(false);
+  const failed = params.get("error") === "google";
 
-  async function onSubmit(v: FormValues) {
-    setError(null);
+  async function google() {
+    setBusy(true);
     try {
-      if (mode === "login") {
-        await authService.login({ email: v.email, role });
-        toast.success("Signed in.");
-        const next = params.get("next");
-        router.push(next && next.startsWith("/") ? next : role === "recruiter" ? "/recruiter/dashboard" : "/jobs");
-      } else {
-        await authService.signup({ role, name: v.name!, email: v.email, company: v.company });
-        toast.success("Account created.");
-        router.push(role === "recruiter" ? "/recruiter/dashboard" : "/onboarding");
-      }
+      // After Google, the callback sends people to the role page, which forwards returning users to their home.
+      const next = params.get("next");
+      const dest = `/choose-role?role=${role}${next && next.startsWith("/") ? `&next=${encodeURIComponent(next)}` : ""}`;
+      await authService.signInWithGoogle(dest);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      toast.error(e instanceof Error ? e.message : "Could not start Google sign-in.");
+      setBusy(false);
     }
   }
 
@@ -74,31 +49,31 @@ function Inner({ mode }: { mode: "login" | "signup" }) {
             : "See which jobs you are eligible for, and get a specific reason if an application does not go forward."}
         </p>
         <div className="mt-10 border-t border-rule pt-6">
-          <p className="text-sm font-semibold mb-3">Skip the form</p>
+          <p className="text-sm font-semibold mb-1">Just looking around?</p>
+          <p className="text-sm text-muted mb-3">The demo accounts use made-up sample data stored in your browser.</p>
           <DemoButtons />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-md w-full">
+      <div className="max-w-md w-full">
         <RoleTabs role={role} onChange={setRole} />
-        <div className="space-y-5">
-          {mode === "signup" && (
-            <Field label="Full name" error={errors.name} required>{(p) => <input className="input" autoComplete="name" {...p} {...register("name")} />}</Field>
-          )}
-          <Field label="Email" error={errors.email} required>{(p) => <input className="input" type="email" autoComplete="email" {...p} {...register("email")} />}</Field>
-          <Field label="Password" error={errors.password} required hint={mode === "login" ? "This is a simulated sign-in. Any password works for an existing account." : "At least 8 characters. Stored nowhere; this demo has no server."}>
-            {(p) => <input className="input" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} {...p} {...register("password")} />}
-          </Field>
-          {mode === "signup" && role === "recruiter" && (
-            <Field label="Company name" hint="Shown to applicants on your job posts." error={errors.company}>{(p) => <input className="input" autoComplete="organization" {...p} {...register("company")} />}</Field>
-          )}
+        <button className="btn btn-primary btn-lg w-full" onClick={google} disabled={busy}>
+          {busy ? "Opening Google…" : mode === "login" ? "Sign in with Google" : "Continue with Google"}
+        </button>
+        <div aria-live="polite">
+          {failed && <p role="alert" className="field-error mt-4 border-l-2 border-accent pl-3">Google sign-in did not complete. Try again.</p>}
         </div>
-        <div aria-live="polite">{error && <p role="alert" className="field-error mt-4 border-l-2 border-accent pl-3">{error}</p>}</div>
-        <button className="btn btn-primary btn-lg w-full mt-6" disabled={isSubmitting}>{isSubmitting ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         <p className="text-sm mt-5 text-muted">
-          {mode === "login" ? <>New here? <Link className="link" href={`/signup?role=${role}`}>Create an account</Link></> : <>Already registered? <Link className="link" href={`/login?role=${role}`}>Sign in</Link></>}
+          {role === "recruiter"
+            ? "You will name your company on the next screen after Google confirms who you are."
+            : "We only receive your name and email from Google. Your resume stays in your own account."}
         </p>
-      </form>
+        <p className="text-sm mt-3 text-muted">
+          {mode === "login"
+            ? <>New here? Signing in with Google creates your account.</>
+            : <>Already registered? Use the same Google account and you will go straight in.</>}
+        </p>
+      </div>
     </div>
   );
 }

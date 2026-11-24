@@ -75,7 +75,7 @@ function NotificationsPanel({ userId }: { userId: string }) {
 
 /** Signed-in frame for one role: guards the route, shows the sidebar, notifications and account menu. */
 export function AppShell({ role, children }: { role: Role; children: React.ReactNode }) {
-  const { ready, user, role: sessionRole } = useSession();
+  const { ready, user, role: sessionRole, needsRole, isDemo } = useSession();
   const router = useRouter();
   const path = usePathname();
   const [navOpen, setNavOpen] = useState(false);
@@ -88,9 +88,9 @@ export function AppShell({ role, children }: { role: Role; children: React.React
     if (allowed) wasAllowed.current = true;
     else if (ready && !wasAllowed.current) {
       const next = encodeURIComponent(path);
-      router.replace(`/login?role=${role}&next=${next}`);
+      router.replace(needsRole ? `/choose-role?role=${role}&next=${next}` : `/login?role=${role}&next=${next}`);
     }
-  }, [ready, allowed, role, path, router]);
+  }, [ready, allowed, needsRole, role, path, router]);
 
   if (!allowed) {
     return (
@@ -137,7 +137,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
             trigger={<>{user!.name}<ChevronDown size={14} aria-hidden /></>}
             items={[
               { label: `Signed in as ${user!.email}`, disabled: true },
-              { label: `Switch to demo ${other}`, separated: true, onClick: async () => { await authService.loginDemo(other); toast.success(`Now viewing the demo ${other} account.`); router.push(other === "recruiter" ? "/recruiter/dashboard" : "/jobs"); } },
+              ...(isDemo ? [{ label: `Switch to demo ${other}`, separated: true, onClick: async () => { await authService.loginDemo(other); toast.success(`Now viewing the demo ${other} account.`); router.push(other === "recruiter" ? "/recruiter/dashboard" : "/jobs"); } }] : []),
               ...(role === "applicant" ? [{ label: "Profile and settings", href: "/profile" }] : []),
               { label: "Sign out", onClick: async () => { await authService.logout(); router.push("/"); } },
             ]}

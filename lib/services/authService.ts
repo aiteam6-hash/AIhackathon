@@ -2,7 +2,14 @@ import type { Applicant, Role, User } from "@/types";
 import { mutate, resetStore } from "@/lib/store/store";
 import { DEMO_RECRUITER_ID } from "@/lib/mock/jobs";
 import { uid } from "@/lib/utils/format";
+import { hasSupabase, supabaseBrowser } from "@/lib/supabase/client";
 import { latency, must, ServiceError, state } from "./util";
+
+export interface RealAuth {
+  user: User | null;
+  /** Signed in with Google, but has not chosen applicant or recruiter yet. */
+  needsRole: boolean;
+}
 
 /** Simulated auth: a "session" is just a user id and role in localStorage. */
 export const authService = {
@@ -59,6 +66,46 @@ export const authService = {
 
   async logout(): Promise<void> {
     mutate(() => ({ session: null }));
+    if (hasSupabase) await supabaseBrowser().auth.signOut();
+  },
+
+  /* ----------------------- real accounts (Supabase + Google) ----------------------- */
+
+  /** Sends the browser to Google. `next` is where to go after the callback finishes. */
+  async signInWithGoogle(next = "/choose-role"): Promise<void> {
+    if (!hasSupabase) throw new ServiceError("Sign-in is not configured on this deployment yet.");
+    const { error } = await supabaseBrowser().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+    });
+    if (error) throw new ServiceError(error.message);
+  },
+
+  async loadRealUser(): Promise<RealAuth> {
+    if (!hasSupabase) return { user: null, needsRole: false };
+    const sb = supabaseBrowser();
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth.user) return { user: null, needsRole: false };
+    const { data: p } = await sb.from("profiles").select("id, role, full_name, email").eq("id", auth.user.id).maybeSingle();
+    if (!p || !p.role) return { user: null, needsRole: true };
+    const role = p.role as Role;
+    return {
+      needsRole: false,
+      user: { id: p.id, role, name: p.full_name || p.email, email: p.email, applicantId: role === "applicant" ? p.id : undefined },
+    };
+  },
+
+  /** Calls `onChange` whenever the Supabase session changes (sign-in, sign-out, token refresh). Returns an unsubscribe. */
+  onAuthChange(onChange: () => void): () => void {
+    if (!hasSupabase) return () => {};
+    const { data } = supabaseBrowser().auth.onAuthStateChange(() => setTimeout(onChange, 0));
+    return () => data.subscription.unsubscribe();
+  },
+
+  /** First-time setup after Google sign-in: choose a role and, for recruiters, name the company. */
+  async completeOnboarding(role: Role, companyName?: string): Promise<void> {
+    const { error } = await supabaseBrowser().rpc("set_my_role", { p_role: role, p_company_name: companyName ?? null });
+    if (error) throw new ServiceError(error.message);
   },
 
   /** Removes the account and everything attached to it. */

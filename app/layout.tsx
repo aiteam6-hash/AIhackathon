@@ -3,6 +3,7 @@ import { Fraunces, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/config";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
+        <AuthProvider />
         {children}
         <Toaster />
       </body>
