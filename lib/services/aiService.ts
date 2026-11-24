@@ -5,6 +5,7 @@ import { mutate } from "@/lib/store/store";
 import { latency, must, nowIso, sleep, state } from "./util";
 import { dual } from "./dispatch";
 import { realAi } from "./real/applications";
+import { realAiMore } from "./real/ai";
 
 /**
  * Simulated AI. Each function is async with a short delay, then calls deterministic code in lib/ai.
@@ -63,6 +64,19 @@ const mock = {
     return engine.generateRejectionFeedback({ application, applicant, job, stage, company: s.companies.find((c) => c.id === job.companyId) });
   },
 
+  /** Demo accounts get a simple template; real accounts get a Claude draft (see real/ai.ts). */
+  async generateJobDescription(input: { title: string; category: string; level: string; location: string; workMode: string; employmentType: string; notes?: string; requiredSkills?: string[] }) {
+    await latency(900);
+    return {
+      description: `${input.notes?.trim() || `We are hiring a ${input.title} for our ${input.location} team.`}
+
+You will work on ${input.category.toLowerCase()} problems with a small team and own your work from start to finish.`,
+      responsibilities: ["Own a piece of the roadmap from first idea to release.", "Work with the team to review each other's work.", "Write down what you learn so others can build on it."],
+      requiredSkills: input.requiredSkills ?? [], preferredSkills: [] as string[],
+      screeningQuestions: ["Describe a project you are proud of and what your part in it was."],
+    };
+  },
+
   async suggestCriteria(job: Job): Promise<Criterion[]> {
     await latency(700);
     return engine.suggestCriteria(job);
@@ -108,4 +122,4 @@ const mock = {
   },
 };
 
-export const aiService = dual(mock, realAi);
+export const aiService = dual(mock, { ...realAi, ...realAiMore });

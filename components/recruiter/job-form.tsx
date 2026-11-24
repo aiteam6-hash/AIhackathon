@@ -9,6 +9,8 @@ import type { Company, Job } from "@/types";
 import { CATEGORIES, CURRENCIES, DEGREES } from "@/lib/ai/shared";
 import { suggestCriteria } from "@/lib/ai/engine";
 import { jobsService } from "@/lib/services/jobsService";
+import { aiService } from "@/lib/services/aiService";
+import { AIBadge } from "@/components/ui/bits";
 import { salaryRange, uid } from "@/lib/utils/format";
 import { Field } from "@/components/ui/field";
 import { Modal } from "@/components/ui/dialog";
@@ -46,8 +48,10 @@ export function JobForm({ initial, companies, userId }: Props) {
   const router = useRouter();
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [drafted, setDrafted] = useState(false);
   const isLive = !!initial && initial.status !== "Draft";
-  const { register, control, handleSubmit, getValues, trigger, formState: { errors } } = useForm<V>({
+  const { register, control, handleSubmit, getValues, setValue, trigger, formState: { errors } } = useForm<V>({
     resolver: zodResolver(schema),
     defaultValues: initial ? {
       title: initial.title, companyId: initial.companyId, department: initial.department, category: initial.category, level: initial.level,
@@ -65,6 +69,39 @@ export function JobForm({ initial, companies, userId }: Props) {
   });
   const resp = useFieldArray({ control, name: "responsibilities" });
   const qs = useFieldArray({ control, name: "questions" });
+
+  const AI_ERRORS: Record<string, string> = {
+    not_configured: "AI drafting is not switched on for this site yet.",
+    slow_down: "Too many AI requests in a minute. Wait a little and try again.",
+    busy: "The AI service is busy. Try again in a moment.",
+    refused: "The AI declined to write this one. Try different wording in your notes.",
+    network: "Could not reach the AI service. Check your connection.",
+  };
+
+  /** Fills the description, responsibilities and questions from the title and any rough notes typed in the description. */
+  async function draftWithAi() {
+    const v = getValues();
+    if (v.title.trim().length < 3) { toast.error("Enter a job title first."); return; }
+    setDrafting(true);
+    try {
+      const d = await aiService.generateJobDescription({
+        title: v.title, category: v.category, level: v.level, location: v.location || "not specified", workMode: v.workMode,
+        employmentType: v.employmentType, notes: v.description.trim() || undefined, requiredSkills: v.requiredSkills,
+      });
+      setValue("description", d.description, { shouldDirty: true, shouldValidate: true });
+      resp.replace(d.responsibilities.map((text) => ({ text })));
+      // skills and questions the recruiter already chose are left alone
+      if (!getValues("requiredSkills").length) setValue("requiredSkills", d.requiredSkills, { shouldDirty: true });
+      if (!getValues("preferredSkills").length) setValue("preferredSkills", d.preferredSkills, { shouldDirty: true });
+      if (getValues("questions").every((q) => !q.text.trim())) qs.replace(d.screeningQuestions.map((text) => ({ text })));
+      setDrafted(true);
+      toast.success("Draft added. Read every field before you publish.");
+    } catch (e) {
+      toast.error(AI_ERRORS[e instanceof Error ? e.message : ""] ?? "The AI could not write a draft right now. Try again.");
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   function build(v: V, status: Job["status"]): Job {
     const id = initial?.id ?? uid("j");
@@ -112,6 +149,11 @@ export function JobForm({ initial, companies, userId }: Props) {
           <Field label="Currency">{(p) => <select className="input" {...p} {...register("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select>}</Field>
         </div>
         <div className="sm:col-span-2"><Field label="Description" required error={errors.description} hint="What the team does and what this person will own.">{(p) => <textarea className="input min-h-32" {...p} {...register("description")} />}</Field></div>
+        <div className="sm:col-span-2 -mt-2 flex flex-wrap items-center gap-3 text-sm">
+          <button type="button" className="btn btn-sm" onClick={draftWithAi} disabled={drafting}>{drafting ? "Drafting…" : "Draft with AI"}</button>
+          <span className="text-muted">Uses the title, level, location and any rough notes you typed above. It replaces the description and responsibilities.</span>
+          {drafted && <AIBadge>AI-generated draft: review before publishing</AIBadge>}
+        </div>
       </fieldset>
 
       <fieldset>

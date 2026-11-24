@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Applicant, Application, Criterion, CriterionScore, Feedback, Interview, Resume, Score, Stage } from "@/types";
 import * as engine from "@/lib/ai/engine";
-import { STALE_DAYS } from "@/lib/config";
+import { AI_MODELS, STALE_DAYS } from "@/lib/config";
+import { aiFeedback, aiScore, aiSummary } from "@/lib/ai/client";
 import { daysAgo } from "@/lib/utils/format";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { ApplicationBundle } from "../applicationsService";
@@ -173,9 +174,9 @@ async function persistScore(runId: string, app: Application, score: Score, summa
   fail((await sb().from("applications").update({ final_score: final, ai_summary: summary, ...(moveUp ? { stage: "screening" } : {}) }).eq("id", app.id)).error);
 }
 
-async function newRun(jobId: string, criteria: Criterion[]): Promise<string> {
+async function newRun(jobId: string, criteria: Criterion[], model: string): Promise<string> {
   const { data, error } = await sb().from("scoring_runs").insert({
-    job_id: jobId, started_by: await me(), model: "rules-v1",
+    job_id: jobId, started_by: await me(), model,
     criteria_snapshot: criteria.map((c) => ({ label: c.label, kind: c.kind, weight: c.weight, description: c.description })),
   }).select("id").single();
   fail(error);
@@ -350,9 +351,9 @@ export const realApplications = {
   async scoreOne(id: string) {
     const b = await bundleOf(id);
     if (!b.job.criteria.length) throw new ServiceError("Add scoring criteria for this role first.");
-    const score = engine.scoreApplication({ application: b.application, applicant: b.applicant, resume: b.resume ?? undefined, job: b.job, company: b.company }, b.job.criteria);
-    const summary = engine.summarizeApplication({ application: { ...b.application, score }, applicant: b.applicant, job: b.job });
-    await persistScore(await newRun(b.job.id, b.job.criteria), b.application, score, summary);
+    const { score, model } = await aiScore(b, b.job.criteria);
+    const summary = await aiSummary({ ...b, application: { ...b.application, score } });
+    await persistScore(await newRun(b.job.id, b.job.criteria, model), b.application, score, summary);
     bump();
   },
 
@@ -400,30 +401,38 @@ export const realApplications = {
 export const realAi = {
   async summarizeApplication(application: Application) {
     const b = await bundleOf(application.id);
-    const summary = engine.summarizeApplication({ application: b.application, applicant: b.applicant, job: b.job });
+    const summary = await aiSummary(b);
     fail((await sb().from("applications").update({ ai_summary: summary }).eq("id", application.id)).error);
     bump();
     return summary;
   },
 
   async generateRejectionFeedback(application: Application, stage: Stage): Promise<Feedback> {
-    const b = await bundleOf(application.id);
-    return engine.generateRejectionFeedback({ application: b.application, applicant: b.applicant, job: b.job, company: b.company, stage });
+    return aiFeedback(await bundleOf(application.id), stage);
   },
 
   /** Scores every active applicant for a role under one run. Earlier manual overrides are kept. */
   async runScoring(jobId: string, criteria: Criterion[], onProgress?: (done: number, total: number) => void) {
     const apps = (await fetchApps((q) => q.eq("job_id", jobId).neq("stage", "withdrawn")));
     const list = await bundles(apps);
-    const runId = await newRun(jobId, criteria);
+    const runId = await newRun(jobId, criteria, AI_MODELS.write);
     onProgress?.(0, list.length);
     let done = 0;
-    for (const b of list) {
-      const score = engine.scoreApplication({ application: b.application, applicant: b.applicant, resume: b.resume ?? undefined, job: b.job, company: b.company }, criteria);
-      const summary = engine.summarizeApplication({ application: { ...b.application, score }, applicant: b.applicant, job: b.job });
-      await persistScore(runId, b.application, score, summary);
-      onProgress?.(++done, list.length);
-    }
+    const models = new Set<string>();
+    // a few applicants at a time: faster than one by one, gentle on rate limits
+    const queue = [...list];
+    const worker = async () => {
+      for (let b = queue.shift(); b; b = queue.shift()) {
+        const { score, model } = await aiScore(b, criteria);
+        models.add(model);
+        const summary = await aiSummary({ ...b, application: { ...b.application, score } });
+        await persistScore(runId, b.application, score, summary);
+        onProgress?.(++done, list.length);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, list.length) }, worker));
+    // record which model actually did the scoring (a run can mix Claude and the rules if some calls failed)
+    fail((await sb().from("scoring_runs").update({ model: models.size === 1 ? [...models][0] : [...models].join("+") || "rules-v1" }).eq("id", runId)).error);
     bump();
     return done;
   },
