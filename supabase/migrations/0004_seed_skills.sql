@@ -1,0 +1,28 @@
+-- Shared skills dictionary. Applicants and jobs both point at these rows, so matching compares ids, not text.
+insert into public.skills (name, category, aliases) values
+ ('React','engineering','{reactjs}'),('TypeScript','engineering','{ts}'),('JavaScript','engineering','{js}'),
+ ('Node.js','engineering','{node,nodejs}'),('Python','engineering','{}'),('Django','engineering','{}'),
+ ('Java','engineering','{}'),('Spring Boot','engineering','{spring}'),('Go','engineering','{golang}'),
+ ('PostgreSQL','engineering','{postgres}'),('MySQL','engineering','{}'),('MongoDB','engineering','{mongo}'),
+ ('Redis','engineering','{}'),('AWS','engineering','{amazon web services}'),('Docker','engineering','{}'),
+ ('Kubernetes','engineering','{k8s}'),('Terraform','engineering','{}'),('GraphQL','engineering','{}'),
+ ('REST APIs','engineering','{rest,restful api}'),('CI/CD','engineering','{cicd}'),('Next.js','engineering','{nextjs}'),
+ ('SQL','engineering','{}'),('Kafka','engineering','{}'),('System Design','engineering','{}'),('Testing','engineering','{}'),
+ ('Figma','design','{}'),('User Research','design','{}'),('Prototyping','design','{}'),('Design Systems','design','{}'),
+ ('Accessibility','design','{a11y}'),('Interaction Design','design','{}'),('Visual Design','design','{}'),
+ ('Usability Testing','design','{}'),('Illustration','design','{}'),('Motion Design','design','{}'),
+ ('Information Architecture','design','{}'),
+ ('Supply Chain','operations','{}'),('Inventory Management','operations','{}'),('Logistics','operations','{}'),
+ ('Vendor Management','operations','{}'),('Process Improvement','operations','{}'),('Lean Six Sigma','operations','{}'),
+ ('Excel','operations','{ms excel}'),('ERP','operations','{}'),('Procurement','operations','{}'),
+ ('Forecasting','operations','{}'),('Warehouse Operations','operations','{}'),
+ ('B2B Sales','sales','{}'),('Lead Generation','sales','{}'),('CRM','sales','{}'),('Salesforce','sales','{}'),
+ ('Negotiation','sales','{}'),('Account Management','sales','{}'),('Cold Outreach','sales','{}'),
+ ('Pipeline Management','sales','{}'),('SaaS Sales','sales','{}'),
+ ('Customer Support','support','{}'),('Zendesk','support','{}'),('Troubleshooting','support','{}'),
+ ('Ticket Triage','support','{}'),('Communication','support','{}'),('Escalation Handling','support','{}'),
+ ('Knowledge Base','support','{}'),('Live Chat','support','{}'),
+ ('Financial Modelling','finance','{financial modeling}'),('Accounting','finance','{}'),('Tally','finance','{}'),
+ ('GST','finance','{}'),('Budgeting','finance','{}'),('FP&A','finance','{fpa}'),('Auditing','finance','{}'),
+ ('Reconciliation','finance','{}'),('Power BI','finance','{powerbi}')
+on conflict (lower(name)) do nothing;

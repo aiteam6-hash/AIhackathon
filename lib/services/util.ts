@@ -1,4 +1,4 @@
-import { getState, mutate } from "@/lib/store/store";
+import { getState, mutate, useStore } from "@/lib/store/store";
 import type { Application, Notification, Stage } from "@/types";
 import { uid } from "@/lib/utils/format";
 
@@ -35,3 +35,6 @@ export function patchApplication(id: string, fn: (a: Application) => Application
 export const stageEvent = (stage: Stage, by: "applicant" | "recruiter" | "system", note?: string) => ({
   stage, by, note, at: nowIso(),
 });
+
+/** Tells screens that read through `useAsync` to refresh. Real-mode writes call this after they finish. */
+export const bump = () => useStore.setState((s) => ({ tick: s.tick + 1 }));

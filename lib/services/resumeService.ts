@@ -3,8 +3,10 @@ import { mutate } from "@/lib/store/store";
 import { buildResumeText } from "@/lib/mock/seed";
 import { uid } from "@/lib/utils/format";
 import { latency, must, nowIso, state } from "./util";
+import { dual } from "./dispatch";
+import { realResume } from "./real/resume";
 
-export const resumeService = {
+const mock = {
   async getProfile(applicantId: string): Promise<{ applicant: Applicant; resume: Resume | null }> {
     await latency(350);
     const s = state();
@@ -13,7 +15,7 @@ export const resumeService = {
   },
 
   /** Stores the edited profile and, when a file was uploaded, the resume record that goes with it. */
-  async saveProfile(applicant: Applicant, upload?: { fileName: string; text: string; usedText: boolean }): Promise<Applicant> {
+  async saveProfile(applicant: Applicant, upload?: { fileName: string; text: string; usedText: boolean; file?: File }): Promise<Applicant> {
     await latency(600);
     let resumeId = applicant.resumeId;
     let resume: Resume | undefined;
@@ -54,3 +56,5 @@ export const resumeService = {
     return state().resumes.find((r) => r.id === resumeId) ?? null;
   },
 };
+
+export const resumeService = dual(mock, realResume);

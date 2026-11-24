@@ -74,6 +74,8 @@ export const authService = {
   /** Sends the browser to Google. `next` is where to go after the callback finishes. */
   async signInWithGoogle(next = "/choose-role"): Promise<void> {
     if (!hasSupabase) throw new ServiceError("Sign-in is not configured on this deployment yet.");
+    // A leftover demo session would take priority over the real one, so clear it before leaving for Google.
+    mutate(() => ({ session: null }));
     const { error } = await supabaseBrowser().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },

@@ -86,11 +86,12 @@ export function AppShell({ role, children }: { role: Role; children: React.React
   const wasAllowed = useRef(false);
   useEffect(() => {
     if (allowed) wasAllowed.current = true;
+    else if (ready && user && sessionRole) router.replace(sessionRole === "recruiter" ? "/recruiter/dashboard" : "/jobs");
     else if (ready && !wasAllowed.current) {
       const next = encodeURIComponent(path);
       router.replace(needsRole ? `/choose-role?role=${role}&next=${next}` : `/login?role=${role}&next=${next}`);
     }
-  }, [ready, allowed, needsRole, role, path, router]);
+  }, [ready, allowed, user, sessionRole, needsRole, role, path, router]);
 
   if (!allowed) {
     return (

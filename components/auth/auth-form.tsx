@@ -1,8 +1,9 @@
 "use client";
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Role } from "@/types";
 import { authService } from "@/lib/services/authService";
+import { useSession } from "@/lib/hooks/useSession";
 import { toast } from "@/components/ui/toaster";
 import { DemoButtons } from "./demo-buttons";
 
@@ -21,6 +22,11 @@ function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void 
 
 function Inner({ mode }: { mode: "login" | "signup" }) {
   const params = useSearchParams();
+  const router = useRouter();
+  const { ready, user, role: signedInRole } = useSession();
+  useEffect(() => {
+    if (ready && user && signedInRole) router.replace(signedInRole === "recruiter" ? "/recruiter/dashboard" : "/jobs");
+  }, [ready, user, signedInRole, router]);
   const [role, setRole] = useState<Role>(params.get("role") === "recruiter" ? "recruiter" : "applicant");
   const [busy, setBusy] = useState(false);
   const failed = params.get("error") === "google";

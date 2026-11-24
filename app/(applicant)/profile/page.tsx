@@ -81,7 +81,7 @@ export default function ProfilePage() {
     const next: Applicant = useFields
       ? { ...applicant, name: parsed.name, headline: parsed.headline, location: parsed.location, skills: parsed.skills, experienceYears: parsed.experienceYears, education: parsed.education, work: parsed.work, summary: parsed.summary }
       : applicant;
-    await resumeService.saveProfile(next, { fileName: parsed.fileName, text: parsed.text, usedText: parsed.usedText });
+    await resumeService.saveProfile(next, { fileName: parsed.fileName, text: parsed.text, usedText: parsed.usedText, file: parsed.file });
     toast.success(useFields ? "Resume replaced and profile fields updated." : "Resume replaced. Profile fields kept as they were.");
     setParsed(null); setReplace(false); setVersion((v) => v + 1);
   }

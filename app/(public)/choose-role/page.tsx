@@ -19,11 +19,13 @@ function Inner() {
 
   const next = params.get("next");
   const home = (r: Role) => (r === "recruiter" ? "/recruiter/dashboard" : "/jobs");
+  // a remembered page is only used when it belongs to this account's own side of the site
+  const sameSide = (path: string, r: Role) => (r === "recruiter" ? path.startsWith("/recruiter") : !path.startsWith("/recruiter"));
 
   // Returning users skip this screen; people who are not signed in go to the login page.
   useEffect(() => {
     if (!ready) return;
-    if (user && existing) router.replace(next && next.startsWith("/") ? next : home(existing));
+    if (user && existing) router.replace(next && next.startsWith("/") && sameSide(next, existing) ? next : home(existing));
     else if (!needsRole) router.replace("/login");
   }, [ready, user, existing, needsRole, next, router]);
 

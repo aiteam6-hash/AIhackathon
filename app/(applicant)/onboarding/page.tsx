@@ -29,7 +29,7 @@ export default function Onboarding() {
   const reviewing = !!parsed || manual;
 
   async function save(a: Applicant) {
-    await resumeService.saveProfile(a, parsed ? { fileName: parsed.fileName, text: parsed.text, usedText: parsed.usedText } : undefined);
+    await resumeService.saveProfile(a, parsed ? { fileName: parsed.fileName, text: parsed.text, usedText: parsed.usedText, file: parsed.file } : undefined);
     toast.success("Profile saved. Here are the jobs that fit you.");
     router.push("/jobs");
   }

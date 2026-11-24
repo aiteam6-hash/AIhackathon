@@ -5,7 +5,7 @@ import { aiService } from "@/lib/services/aiService";
 import type { ParsedProfile } from "@/lib/ai/parse";
 import { ProgressBar } from "@/components/ui/bits";
 
-export type ParsedResume = ParsedProfile & { usedText: boolean; text: string; fileName: string };
+export type ParsedResume = ParsedProfile & { usedText: boolean; text: string; fileName: string; file: File };
 const MAX_MB = 5;
 
 interface Props {
@@ -31,7 +31,7 @@ export function ResumeUpload({ onParsed, label = "Upload your resume" }: Props) 
     try {
       setProgress({ pct: 0, label: "Starting" });
       const parsed = await aiService.parseResume(file, (pct, l) => setProgress({ pct, label: l }));
-      onParsed({ ...parsed, fileName: file.name });
+      onParsed({ ...parsed, fileName: file.name, file });
     } catch {
       setError("We could not read that file. Try again, or enter your details by hand.");
     } finally {
