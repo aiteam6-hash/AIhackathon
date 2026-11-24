@@ -8,7 +8,7 @@ import { categoryDb, categoryUi, currencyUi, degreeDb, degreeUi, modeDb, modeUi 
 const sb = () => supabaseBrowser();
 const fail = (e: { message: string } | null) => { if (e) throw new ServiceError(e.message); };
 
-function toResume(r: any, applicant?: Applicant): Resume {
+export function toResume(r: any, applicant?: Applicant): Resume {
   return {
     id: r.id, applicantId: r.applicant_id, fileName: r.file_name, uploadedAt: r.uploaded_at,
     // PDFs and DOCX cannot be read in the browser, so their text is rebuilt from the profile fields
@@ -16,7 +16,7 @@ function toResume(r: any, applicant?: Applicant): Resume {
   };
 }
 
-function toApplicant(p: any, prof: any, work: any[], skills: any[]): Applicant {
+export function toApplicant(p: any, prof: any, work: any[], skills: any[]): Applicant {
   return {
     id: p.user_id, name: prof?.full_name ?? "", email: prof?.email ?? "", headline: p.headline, location: p.location,
     skills: skills.map((s) => s.skills?.name).filter(Boolean),
@@ -35,7 +35,7 @@ function toApplicant(p: any, prof: any, work: any[], skills: any[]): Applicant {
 }
 
 /** Finds skill ids by name (case-insensitive) and creates any that are new. */
-async function skillIds(names: string[]): Promise<string[]> {
+export async function skillIds(names: string[]): Promise<string[]> {
   const { data, error } = await sb().from("skills").select("id,name");
   fail(error);
   const byLower = new Map<string, string>((data ?? []).map((s: any) => [s.name.toLowerCase(), s.id]));

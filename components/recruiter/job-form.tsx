@@ -85,7 +85,7 @@ export function JobForm({ initial, companies, userId }: Props) {
 
   async function persist(job: Job, message: string) {
     setSaving(true);
-    try { await jobsService.saveJob(job); toast.success(message); router.push(job.status === "Draft" ? "/recruiter/jobs" : `/recruiter/jobs/${job.id}`); }
+    try { const saved = await jobsService.saveJob(job); toast.success(message); router.push(saved.status === "Draft" ? "/recruiter/jobs" : `/recruiter/jobs/${saved.id}`); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not save the role."); setSaving(false); }
   }
 

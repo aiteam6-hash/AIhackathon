@@ -6,6 +6,8 @@ import { checkEligibility } from "@/lib/ai/engine";
 import { mutate } from "@/lib/store/store";
 import { STALE_DAYS } from "@/lib/config";
 import { daysAgo, uid } from "@/lib/utils/format";
+import { dual } from "./dispatch";
+import { realApplications } from "./real/applications";
 import { latency, must, notify, nowIso, patchApplication, ServiceError, stageEvent, state, userIdOfApplicant } from "./util";
 
 export interface ApplicationBundle {
@@ -66,7 +68,7 @@ function applyMove(id: string, to: Stage, opts: { note?: string; feedback?: Feed
   else notify(uidA, `Application moved to ${to}`, `${b.company.name} moved your ${b.job.title} application to ${to}.`, `/applications/${id}`);
 }
 
-export const applicationsService = {
+const mock = {
   /* ------------------------------ applicant ------------------------------ */
   async apply(input: { jobId: string; applicantId: string; coverNote: string; answers: Record<string, string>; expectedSalary: number; noticeDays: number; anyway?: boolean }) {
     await latency(900);
@@ -281,3 +283,5 @@ export const applicationsService = {
     };
   },
 };
+
+export const applicationsService = dual(mock, realApplications);

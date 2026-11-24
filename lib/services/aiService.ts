@@ -3,12 +3,14 @@ import * as engine from "@/lib/ai/engine";
 import { extractProfile, readFileText, type ParsedProfile } from "@/lib/ai/parse";
 import { mutate } from "@/lib/store/store";
 import { latency, must, nowIso, sleep, state } from "./util";
+import { dual } from "./dispatch";
+import { realAi } from "./real/applications";
 
 /**
  * Simulated AI. Each function is async with a short delay, then calls deterministic code in lib/ai.
  * Swap these bodies for real LLM calls and keep the signatures.
  */
-export const aiService = {
+const mock = {
   /** Reads a PDF/DOCX/TXT upload, reporting progress 0..100 while it "extracts". */
   async parseResume(file: File, onProgress?: (pct: number, label: string) => void): Promise<ParsedProfile & { usedText: boolean; text: string }> {
     const steps = ["Reading file", "Finding contact details", "Extracting skills", "Estimating experience", "Building profile"];
@@ -105,3 +107,5 @@ export const aiService = {
     return done;
   },
 };
+
+export const aiService = dual(mock, realAi);

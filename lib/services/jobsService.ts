@@ -4,6 +4,8 @@ import { toINR } from "@/lib/ai/shared";
 import { mutate } from "@/lib/store/store";
 import { uid } from "@/lib/utils/format";
 import { latency, must, nowIso, state } from "./util";
+import { dual } from "./dispatch";
+import { realJobs } from "./real/jobs";
 
 export interface JobFilters {
   q?: string;
@@ -27,7 +29,7 @@ export interface JobListing {
 
 const companyOf = (id: string) => must(state().companies.find((c) => c.id === id), "Company not found.");
 
-export const jobsService = {
+const mock = {
   async listOpenJobs(filters: JobFilters, applicantId?: string): Promise<JobListing[]> {
     await latency(500);
     const s = state();
@@ -149,3 +151,5 @@ export const jobsService = {
     return t;
   },
 };
+
+export const jobsService = dual(mock, realJobs);
