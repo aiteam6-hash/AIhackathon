@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { AI_CALLS_PER_MINUTE } from "@/lib/config";
 import { AI_TASKS, type AiTask } from "@/lib/ai/schemas";
 import { AiBadOutput, AiRefusal, Anthropic, claudeConfigured, generate } from "@/lib/ai/server/claude";
-import { build } from "@/lib/ai/server/tasks";
+import { build, buildInterviewSummary } from "@/lib/ai/server/tasks";
 
 export const maxDuration = 60;
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const text = await request.text();
   if (text.length > 80_000) return json(413, "too_large");
-  let body: { task?: string; input?: unknown; jobId?: string; applicationId?: string };
+  let body: { task?: string; input?: unknown; jobId?: string; applicationId?: string; interviewId?: string };
   try { body = JSON.parse(text); } catch { return json(400, "bad_json"); }
   const task = body.task as AiTask;
   if (!AI_TASKS.includes(task)) return json(400, "unknown_task");
@@ -50,14 +50,36 @@ export async function POST(request: Request) {
     });
 
   let built;
+  let after: ((data: unknown, model: string) => Promise<void>) | undefined;
   try {
-    built = build(task, body.input);
+    if (task === "interview_summary") {
+      // The transcript is read from the database under the recruiter's own permissions, never taken from the browser.
+      const interviewId = z.string().uuid().parse(body.interviewId);
+      const { data: iv } = await supabase.from("ai_interviews").select("id, status, application_id").eq("id", interviewId).maybeSingle();
+      if (!iv || iv.status !== "completed") return json(400, "interview_not_completed");
+      const { data: answers } = await supabase.from("ai_interview_answers").select("question_text, answer, input_mode, created_at").eq("interview_id", interviewId).order("created_at");
+      const { data: app } = await supabase.from("applications").select("job_id").eq("id", iv.application_id).maybeSingle();
+      const { data: job } = app ? await supabase.from("jobs").select("title").eq("id", app.job_id).maybeSingle() : { data: null };
+      if (!answers?.length || !job) return json(400, "nothing_to_summarise");
+      built = buildInterviewSummary(job.title, answers);
+      after = async (data, model) => {
+        const d = data as { overview: string; strengths: string[]; concerns: string[]; perAnswer: unknown[]; recommendation: string };
+        const { error } = await supabase.from("ai_interview_summaries").upsert(
+          { interview_id: interviewId, overview: d.overview, strengths: d.strengths, concerns: d.concerns, per_answer: d.perAnswer, recommendation: d.recommendation, model },
+          { onConflict: "interview_id" },
+        );
+        if (error) throw new Error("save_failed");
+      };
+    } else {
+      built = build(task, body.input);
+    }
   } catch (e) {
     return json(400, e instanceof ZodError ? "invalid_input" : "bad_request");
   }
 
   try {
     const out = await generate(built as never) as { data: unknown; model: string; inputTokens: number; outputTokens: number };
+    if (after) await after(out.data, out.model);
     await log(out.model, "ok", out);
     return NextResponse.json({ data: out.data, model: out.model });
   } catch (e) {

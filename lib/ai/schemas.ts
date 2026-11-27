@@ -45,5 +45,15 @@ export const resumeOut = z.object({
   summary: z.string(),
 });
 
-export const AI_TASKS = ["job_description", "criteria", "score", "summary", "feedback", "parse_resume"] as const;
+export const interviewQuestionsOut = z.object({ questions: z.array(z.string()) });
+
+export const interviewSummaryOut = z.object({
+  overview: z.string(),
+  strengths: z.array(z.string()),
+  concerns: z.array(z.string()),
+  perAnswer: z.array(z.object({ question: z.string(), note: z.string() })),
+  recommendation: z.string(),
+});
+
+export const AI_TASKS = ["job_description", "criteria", "score", "summary", "feedback", "parse_resume", "interview_questions", "interview_summary"] as const;
 export type AiTask = (typeof AI_TASKS)[number];

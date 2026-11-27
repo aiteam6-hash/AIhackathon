@@ -13,6 +13,8 @@ import { Modal } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { RequirementsChecklist } from "@/components/jobs/job-parts";
 import { useCandidateActions } from "@/components/recruiter/candidate-actions";
+import { AiInterviewPanel } from "@/components/recruiter/ai-interview-panel";
+import { useSession } from "@/lib/hooks/useSession";
 import type { CriterionScore } from "@/types";
 
 function OverrideDialog({ id, row, onClose }: { id: string; row: CriterionScore | null; onClose: () => void }) {
@@ -49,6 +51,7 @@ export default function CandidatePage() {
   const { id } = useParams<{ id: string }>();
   const { data, error, reload } = useAsync(() => applicationsService.getCandidate(id), [id]);
   const actions = useCandidateActions();
+  const { isDemo } = useSession();
   const [override, setOverride] = useState<CriterionScore | null>(null);
   const [note, setNote] = useState("");
   const [scoring, setScoring] = useState(false);
@@ -133,6 +136,8 @@ export default function CandidatePage() {
                 <div className="flex flex-wrap gap-2"><button className="btn btn-primary btn-sm" onClick={scoreNow} disabled={scoring}>{scoring ? "Scoring…" : "Score this candidate"}</button><Link className="btn btn-sm" href={`/recruiter/jobs/${job.id}/criteria`}>Edit criteria</Link></div></div>
             )}
           </section>
+
+          {!isDemo && <AiInterviewPanel applicationId={a.id} stage={a.stage} />}
 
           <section aria-labelledby="resume">
             <h2 id="resume" className="text-3xl mb-3">Resume</h2>

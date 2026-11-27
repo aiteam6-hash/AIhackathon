@@ -15,7 +15,7 @@ export class AiUnavailable extends Error {}
 
 interface Reply<T> { data: T; model: string }
 
-export async function callAi<T>(task: string, input: unknown, ctx: { jobId?: string; applicationId?: string } = {}): Promise<Reply<T>> {
+export async function callAi<T>(task: string, input: unknown, ctx: { jobId?: string; applicationId?: string; interviewId?: string } = {}): Promise<Reply<T>> {
   let res: Response;
   try {
     res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task, input, ...ctx }) });
@@ -158,4 +158,27 @@ export async function aiParseResume(text: string): Promise<Omit<ParsedProfile, "
     work: data.work.map((w) => ({ title: w.title, employer: w.employer, startYear: Math.round(w.startYear), endYear: w.endYear == null ? null : Math.round(w.endYear) })),
     summary: data.summary,
   };
+}
+
+/** Drafts interview questions from the role and the candidate. A recruiter edits and approves them before any applicant sees them. */
+export async function aiInterviewQuestions(s: Subject, notes?: string): Promise<string[]> {
+  const a = s.applicant;
+  const weak = [...(s.application.score?.criteria ?? [])].sort((x, y) => engine.effectiveScore(x) - engine.effectiveScore(y)).filter((c) => engine.effectiveScore(c) < 75).slice(0, 3);
+  const { data } = await callAi<{ questions: string[] }>("interview_questions", {
+    job: {
+      title: s.job.title, category: s.job.category, level: s.job.level, description: s.job.description.slice(0, 3000),
+      requiredSkills: s.job.requirements.requiredSkills, preferredSkills: s.job.preferredSkills,
+    },
+    candidate: { headline: a.headline, experienceYears: a.experienceYears, skills: a.skills, work: candidateOf(a).work, summary: anonymise(a.summary, a.name) },
+    weakAreas: weak.map((c) => `${c.label}: ${c.reasoning}`.slice(0, 300)),
+    recruiterNotes: notes?.trim() || undefined,
+  }, { jobId: s.job.id, applicationId: s.application.id });
+  const list = data.questions.map((q) => q.trim()).filter(Boolean).slice(0, 8);
+  if (list.length < 3) throw new AiUnavailable("incomplete");
+  return list;
+}
+
+/** Asks the server to summarise a completed interview. The server reads the transcript itself and saves the result. */
+export async function aiInterviewSummary(interviewId: string): Promise<void> {
+  await callAi("interview_summary", {}, { interviewId });
 }

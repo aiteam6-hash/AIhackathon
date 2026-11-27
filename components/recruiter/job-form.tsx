@@ -148,25 +148,6 @@ export function JobForm({ initial, companies, userId }: Props) {
           <Field label="Yearly salary, to" required error={errors.salaryMax}>{(p) => <input className="input" type="number" {...p} {...register("salaryMax", { valueAsNumber: true })} />}</Field>
           <Field label="Currency">{(p) => <select className="input" {...p} {...register("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select>}</Field>
         </div>
-        <div className="sm:col-span-2"><Field label="Description" required error={errors.description} hint="What the team does and what this person will own.">{(p) => <textarea className="input min-h-32" {...p} {...register("description")} />}</Field></div>
-        <div className="sm:col-span-2 -mt-2 flex flex-wrap items-center gap-3 text-sm">
-          <button type="button" className="btn btn-sm" onClick={draftWithAi} disabled={drafting}>{drafting ? "Drafting…" : "Draft with AI"}</button>
-          <span className="text-muted">Uses the title, level, location and any rough notes you typed above. It replaces the description and responsibilities.</span>
-          {drafted && <AIBadge>AI-generated draft: review before publishing</AIBadge>}
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend className="text-3xl mb-5">Responsibilities</legend>
-        <div className="space-y-3">
-          {resp.fields.map((f, i) => (
-            <div key={f.id} className="flex gap-2 items-start">
-              <input className="input" aria-label={`Responsibility ${i + 1}`} {...register(`responsibilities.${i}.text`)} />
-              <button type="button" className="btn btn-text" aria-label={`Remove responsibility ${i + 1}`} onClick={() => resp.remove(i)}><Trash2 size={15} /></button>
-            </div>
-          ))}
-        </div>
-        <button type="button" className="btn btn-sm mt-3" onClick={() => resp.append({ text: "" })}><Plus size={14} aria-hidden /> Add responsibility</button>
       </fieldset>
 
       <fieldset className="grid gap-5 sm:grid-cols-2">
@@ -191,6 +172,29 @@ export function JobForm({ initial, companies, userId }: Props) {
           ))}
         </div>
         <button type="button" className="btn btn-sm mt-3" onClick={() => qs.append({ text: "" })}><Plus size={14} aria-hidden /> Add question</button>
+      </fieldset>
+
+      <fieldset className="grid gap-5 sm:grid-cols-2">
+        <legend className="text-3xl mb-1">Description and responsibilities</legend>
+        <p className="sm:col-span-2 text-sm text-muted mb-3">Fill in everything above first. The AI draft uses your title, requirements and skills.</p>
+        <div className="sm:col-span-2"><Field label="Description" required error={errors.description} hint="What the team does and what this person will own.">{(p) => <textarea className="input min-h-32" {...p} {...register("description")} />}</Field></div>
+        <div className="sm:col-span-2 -mt-2 flex flex-wrap items-center gap-3 text-sm">
+          <button type="button" className="btn btn-sm" onClick={draftWithAi} disabled={drafting}>{drafting ? "Drafting…" : "Draft with AI"}</button>
+          <span className="text-muted">Uses the title, requirements and skills above, plus any rough notes you type in the description. It replaces the description and responsibilities.</span>
+          {drafted && <AIBadge>AI-generated draft: review before publishing</AIBadge>}
+        </div>
+        <div className="sm:col-span-2">
+          <h3 className="field-label">Responsibilities</h3>
+        <div className="space-y-3">
+          {resp.fields.map((f, i) => (
+            <div key={f.id} className="flex gap-2 items-start">
+              <input className="input" aria-label={`Responsibility ${i + 1}`} {...register(`responsibilities.${i}.text`)} />
+              <button type="button" className="btn btn-text" aria-label={`Remove responsibility ${i + 1}`} onClick={() => resp.remove(i)}><Trash2 size={15} /></button>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="btn btn-sm mt-3" onClick={() => resp.append({ text: "" })}><Plus size={14} aria-hidden /> Add responsibility</button>
+        </div>
       </fieldset>
 
       <div className="flex flex-wrap gap-3 border-t border-ink pt-6">

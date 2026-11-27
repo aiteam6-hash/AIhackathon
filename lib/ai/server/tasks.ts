@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AI_MODELS } from "@/lib/config";
 import { ALL_SKILLS } from "@/lib/ai/shared";
-import { criteriaOut, feedbackOut, jobDraftOut, resumeOut, scoreOut, summaryOut, type AiTask } from "@/lib/ai/schemas";
+import { criteriaOut, feedbackOut, interviewQuestionsOut, interviewSummaryOut, jobDraftOut, resumeOut, scoreOut, summaryOut, type AiTask } from "@/lib/ai/schemas";
 import type { GenerateOptions } from "./claude";
 
 /**
@@ -51,6 +51,14 @@ const feedbackInput = z.object({
   failedChecks: z.array(str(500)).max(10),
   weakCriteria: z.array(z.object({ label: str(120), score: z.number(), reasoning: str(800) })).max(6),
   missingSkills: z.array(str(60)).max(20), experienceYears: z.number(), salaryNote: str(300).optional(),
+});
+
+const interviewQuestionsInput = z.object({
+  job: z.object({ title: str(200), category: str(40), level: str(20), description: str(3000), requiredSkills: z.array(str(60)).max(30), preferredSkills: z.array(str(60)).max(30) }),
+  candidate: z.object({ headline: str(200), experienceYears: z.number(), skills: z.array(str(60)).max(60), work: z.array(str(300)).max(15), summary: str(2000) }),
+  weakAreas: z.array(str(300)).max(6),
+  count: z.number().int().min(3).max(8).optional(),
+  recruiterNotes: str(1000).optional(),
 });
 
 const parseInput = z.object({ text: str(20000) });
@@ -108,6 +116,19 @@ message: 2 to 3 sentences that thank them, name the role and company, say plainl
         user: `Stage where the application ended: ${i.stage}\nRole: ${i.jobTitle} at ${i.companyName}\nRequirements not met: ${JSON.stringify(i.failedChecks)}\nWeakest criteria: ${JSON.stringify(i.weakCriteria)}\nPreferred skills not on the resume: ${i.missingSkills.join(", ") || "none"}\nYears of experience on the profile: ${i.experienceYears}\n${i.salaryNote ? `Pay note: ${i.salaryNote}\n` : ""}`,
       };
     }
+    case "interview_questions": {
+      const i = interviewQuestionsInput.parse(raw);
+      const n = i.count ?? 5;
+      return {
+        model: AI_MODELS.write, effort: "low", schema: interviewQuestionsOut, maxTokens: 1500,
+        system: `${RULES}
+You draft the questions for a short, spoken AI screening interview. A recruiter will read, edit and approve them before any applicant sees them.
+Write exactly ${n} questions. They will be read aloud by a text-to-speech voice and answered out loud in about one to two minutes each, so each one: is one question only (no "and also"), is under 30 words, uses plain spoken English, and cannot be answered with yes or no.
+Mix them: one easy opener about why they want this kind of role, two or three that ask for a real example from their work and are tied to the role's skills or to the candidate's own background, and one that asks how they would handle a realistic situation in this job. Where the candidate's background is thin on something the role needs, ask about it fairly and openly.
+Never ask about age, gender, marriage, family plans, religion, caste, nationality, health, disability, or salary history. No riddles or trick questions.`,
+        user: `<job>\n${JSON.stringify(i.job)}\n</job>\n<candidate>\n${JSON.stringify(i.candidate)}\n</candidate>\nAreas where the screening scores were weaker: ${JSON.stringify(i.weakAreas)}\n<notes>${i.recruiterNotes ?? "none"}</notes>`,
+      };
+    }
     case "parse_resume": {
       const i = parseInput.parse(raw);
       return {
@@ -117,5 +138,20 @@ Extract a profile from the resume text. Use only what the text says; leave a str
         user: `<resume>\n${i.text}\n</resume>`,
       };
     }
+    case "interview_summary":
+      // Built from the stored transcript in the route (buildInterviewSummary), never from browser input.
+      throw new Error("interview_summary is built from the database");
   }
+}
+
+/** Built on the server from the stored transcript, so a browser can never supply or alter what is summarised. */
+export function buildInterviewSummary(jobTitle: string, answers: { question_text: string; answer: string; input_mode: string }[]): Built {
+  return {
+    model: AI_MODELS.write, effort: "medium", schema: interviewSummaryOut, maxTokens: 3000,
+    system: `${RULES}
+You summarise a short screening interview for the recruiter. The applicant answered each question aloud or by typing. Spoken answers are speech-to-text transcripts and may contain recognition mistakes, so never mark someone down for odd or misspelled words.
+Judge only the content of the answers: how relevant, specific and well reasoned they are, and what real experience they show. Never assess accent, pronunciation, voice, fluency, speed, confidence, emotion or personality. If an answer is empty, very short or off topic, say so plainly.
+overview: 2 to 3 sentences. strengths and concerns: 2 to 4 short items each, each citing something that was actually said. perAnswer: one entry per question, in the same order, with the question and a 1 to 2 sentence note. recommendation: start with one of "Proceed to a human interview", "Keep in the pool and review", or "Do not proceed", then one sentence of reason. This summary supports a person's decision; it is not the decision.`,
+    user: `Role: ${jobTitle}\n<screening_answers>\n${JSON.stringify(answers.map((a, idx) => ({ n: idx + 1, question: a.question_text, how_answered: a.input_mode, answer: a.answer || "(no answer)" })))}\n</screening_answers>`,
+  };
 }

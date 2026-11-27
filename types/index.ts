@@ -261,3 +261,35 @@ export interface JobMatch {
   oneLine: string;
   parts: { label: string; percent: number }[];
 }
+
+export type AiInterviewStatus = "draft" | "approved" | "in_progress" | "completed" | "cancelled";
+export interface AiInterviewQuestion { id: string; text: string }
+export interface AiInterviewAnswer {
+  questionId: string;
+  questionText: string;
+  answer: string;
+  inputMode: "voice" | "typed";
+  durationSeconds?: number;
+}
+export interface AiInterviewSummary {
+  overview: string;
+  strengths: string[];
+  concerns: string[];
+  perAnswer: { question: string; note: string }[];
+  recommendation: string;
+  model: string;
+  createdAt: string;
+}
+export interface AiInterview {
+  id: string;
+  applicationId: string;
+  status: AiInterviewStatus;
+  questions: AiInterviewQuestion[];
+  approvedAt?: string;
+  expiresAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  answers: AiInterviewAnswer[];
+  /** Only recruiters receive this; row-level security hides it from applicants. */
+  summary?: AiInterviewSummary;
+}

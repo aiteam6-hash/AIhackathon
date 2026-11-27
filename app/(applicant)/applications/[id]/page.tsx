@@ -2,10 +2,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { CalendarClock, Lock, MapPin, Video } from "lucide-react";
+import { CalendarClock, MapPin, Mic, Video } from "lucide-react";
 import { useSession } from "@/lib/hooks/useSession";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { applicationsService } from "@/lib/services/applicationsService";
+import { aiInterviewService } from "@/lib/services/aiInterviewService";
 import { formatDate, money } from "@/lib/utils/format";
 import { AIBadge, Breadcrumbs, PageHeader, StageMark } from "@/components/ui/bits";
 import { ErrorState, SkeletonBlock } from "@/components/ui/states";
@@ -16,8 +17,10 @@ import { RequirementsChecklist } from "@/components/jobs/job-parts";
 
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useSession();
+  const { user, isDemo } = useSession();
   const { data, error, reload } = useAsync(() => applicationsService.getForApplicant(id, user!.applicantId!), [id, user?.id]);
+  // AI interviews exist only for real accounts; demo accounts skip the lookup.
+  const aiIv = useAsync(async () => (isDemo ? null : aiInterviewService.get(id)), [id, isDemo]);
   const [withdraw, setWithdraw] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -72,6 +75,18 @@ export default function ApplicationDetail() {
       {a.stage === "Offer" && <section className="border border-accent p-6 mb-12 max-w-3xl" role="status"><h2 className="text-3xl mb-2">You have an offer</h2><p>{company.name} would like to make you an offer for {job.title}. The recruiter will contact you at {applicant.email} with the details.</p></section>}
       {a.stage === "Hired" && <section className="border border-accent p-6 mb-12 max-w-3xl" role="status"><h2 className="text-3xl mb-2">You are hired</h2><p>Congratulations. {company.name} marked you as hired for {job.title}.</p></section>}
 
+      {aiIv.data && (aiIv.data.status === "approved" || aiIv.data.status === "in_progress") && (
+        <section aria-labelledby="aiiv" className="border border-accent p-6 mb-12 max-w-3xl">
+          <p className="eyebrow mb-1">Action needed</p>
+          <h2 id="aiiv" className="text-3xl mb-2">You have an AI interview to complete</h2>
+          <p className="mb-4">{company.name} approved a short interview call with {aiIv.data.questions.length} questions. Answer by voice or by typing, whichever you prefer.{aiIv.data.expiresAt ? ` Please finish by ${formatDate(aiIv.data.expiresAt)}.` : ""}</p>
+          <Link href={`/applications/${a.id}/ai-interview`} className="btn btn-primary"><Mic size={16} aria-hidden /> {aiIv.data.status === "in_progress" ? "Continue the interview" : "Start the interview"}</Link>
+        </section>
+      )}
+      {aiIv.data?.status === "completed" && (
+        <p className="mb-12 max-w-3xl text-sm border-l-2 border-accent pl-3" role="status">You completed your AI interview{aiIv.data.completedAt ? ` on ${formatDate(aiIv.data.completedAt)}` : ""}. The recruiter will review it.</p>
+      )}
+
       {a.interview && a.stage === "Interview" && (
         <section aria-labelledby="iv" className="mb-12 max-w-3xl">
           <h2 id="iv" className="text-3xl mb-4">Your interview</h2>
@@ -85,11 +100,6 @@ export default function ApplicationDetail() {
           <div className="flex flex-wrap gap-2 mt-4">
             <button className="btn btn-primary" disabled={busy || a.interview.status === "Accepted"} onClick={() => respond("Accepted")}>{a.interview.status === "Accepted" ? "Accepted" : "Accept interview"}</button>
             <button className="btn" disabled={busy || a.interview.status === "Reschedule requested"} onClick={() => respond("Reschedule requested")}>{a.interview.status === "Reschedule requested" ? "Reschedule requested" : "Request a different time"}</button>
-          </div>
-          <div className="mt-6 border border-rule p-4 flex items-start gap-3 text-muted" aria-disabled="true">
-            <Lock size={16} className="mt-1" aria-hidden />
-            <div><p className="font-semibold text-ink">Voice assessment</p><p className="text-sm">Coming in a later version.</p></div>
-            <button className="btn btn-sm ml-auto" disabled>Start</button>
           </div>
         </section>
       )}
