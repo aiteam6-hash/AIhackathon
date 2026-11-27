@@ -5,15 +5,19 @@ import { sleep } from "../util";
 
 /** Claude-backed versions of the AI calls that do not touch the database. */
 export const realAiMore = {
-  /** Reads a TXT file with Claude; PDF and DOCX still fall back to the built-in sample until server-side text extraction exists. */
-  async parseResume(file: File, onProgress?: (pct: number, label: string) => void): Promise<ParsedProfile & { usedText: boolean; text: string }> {
+  /** Reads TXT, PDF and DOCX files (text is extracted in the browser) and asks Claude to fill in the profile. */
+  async parseResume(file: File, onProgress?: (pct: number, label: string) => void): Promise<ParsedProfile & { usedText: boolean; text: string; sample?: boolean }> {
     onProgress?.(10, "Reading file");
     const text = await readFileText(file);
     const base = extractProfile(file.name, text);
     if (!base.usedText) {
-      await sleep(600);
+      // Nothing readable (for example a scan or a photo). Never invent a profile: hand back an empty one to fill in.
+      await sleep(400);
       onProgress?.(100, "Done");
-      return { ...base.profile, usedText: false, text };
+      return {
+        name: "", email: "", headline: "", location: "", skills: [], experienceYears: 0,
+        education: { degree: "None", field: "", institution: "" }, work: [], summary: "", usedText: false, text: "", sample: false,
+      };
     }
     onProgress?.(35, "Reading your resume with Claude");
     try {

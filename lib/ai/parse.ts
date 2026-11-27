@@ -1,5 +1,6 @@
 import type { Applicant, Degree } from "@/types";
 import { ALL_SKILLS, CITIES, DEGREES } from "./shared";
+import { extractResumeText } from "./extract";
 
 export type ParsedProfile = Pick<
   Applicant,
@@ -65,7 +66,7 @@ function readable(text: string) {
 
 export async function readFileText(file: File): Promise<string> {
   try {
-    return await file.text();
+    return await extractResumeText(file);
   } catch {
     return "";
   }

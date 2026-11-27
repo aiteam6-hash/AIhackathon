@@ -24,7 +24,7 @@ export default function Onboarding() {
 
   const applicant = data.applicant;
   const draft: Applicant = parsed
-    ? { ...applicant, name: parsed.name, headline: parsed.headline, location: parsed.location, skills: parsed.skills, experienceYears: parsed.experienceYears, education: parsed.education, work: parsed.work, summary: parsed.summary }
+    ? { ...applicant, name: parsed.name || applicant.name, headline: parsed.headline, location: parsed.location, skills: parsed.skills, experienceYears: parsed.experienceYears, education: parsed.education, work: parsed.work, summary: parsed.summary }
     : applicant;
   const reviewing = !!parsed || manual;
 
@@ -49,8 +49,10 @@ export default function Onboarding() {
             <p role="status" className="border-l-2 border-accent pl-3 mb-8 text-sm">
               <strong>{parsed.fileName}</strong>{" "}
               {parsed.usedText
-                ? "was read and the fields below were extracted from its text. Skills are matched against a keyword list, so check them."
-                : "could not be read as plain text in the browser, so the fields below were filled with a sample profile. Please correct every field before saving."}{" "}
+                ? "was read and the fields below were filled in from its text. Check each one before saving."
+                : parsed.sample
+                  ? "has no readable text, so the fields below were filled with sample details. Please correct every field before saving."
+                  : "has no readable text. It may be a scan or a picture of a document, so the form below is empty. Fill it in by hand, or upload a PDF or DOCX that has selectable text."}{" "}
               <button className="link" onClick={() => { setParsed(null); setManual(false); }}>Upload a different file</button>
             </p>
           )}

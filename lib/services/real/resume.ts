@@ -2,6 +2,7 @@
 import type { Applicant, Category, Resume, WorkMode } from "@/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { buildResumeText } from "@/lib/mock/seed";
+import { readFileText } from "@/lib/ai/parse";
 import { bump, ServiceError } from "../util";
 import { categoryDb, categoryUi, currencyUi, degreeDb, degreeUi, modeDb, modeUi } from "./mappers";
 
@@ -72,8 +73,7 @@ async function storeResume(applicantId: string, file: File, text: string | null)
 }
 
 async function readableText(file: File): Promise<string | null> {
-  if (!/\.txt$/i.test(file.name)) return null;
-  const t = await file.text().catch(() => "");
+  const t = await readFileText(file);
   return (t.match(/[A-Za-z]{3,}/g) ?? []).length > 25 ? t : null;
 }
 

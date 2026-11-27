@@ -13,7 +13,7 @@ import { realAiMore } from "./real/ai";
  */
 const mock = {
   /** Reads a PDF/DOCX/TXT upload, reporting progress 0..100 while it "extracts". */
-  async parseResume(file: File, onProgress?: (pct: number, label: string) => void): Promise<ParsedProfile & { usedText: boolean; text: string }> {
+  async parseResume(file: File, onProgress?: (pct: number, label: string) => void): Promise<ParsedProfile & { usedText: boolean; text: string; sample?: boolean }> {
     const steps = ["Reading file", "Finding contact details", "Extracting skills", "Estimating experience", "Building profile"];
     for (let i = 0; i < steps.length; i++) {
       onProgress?.(Math.round((i / steps.length) * 100), steps[i]);
@@ -22,7 +22,7 @@ const mock = {
     const text = await readFileText(file);
     const { profile, usedText } = extractProfile(file.name, text);
     onProgress?.(100, "Done");
-    return { ...profile, usedText, text };
+    return { ...profile, usedText, text, sample: !usedText };
   },
 
   async matchJobs(profile: Applicant, jobs: Job[]) {

@@ -5,7 +5,7 @@ import { aiService } from "@/lib/services/aiService";
 import type { ParsedProfile } from "@/lib/ai/parse";
 import { ProgressBar } from "@/components/ui/bits";
 
-export type ParsedResume = ParsedProfile & { usedText: boolean; text: string; fileName: string; file: File };
+export type ParsedResume = ParsedProfile & { usedText: boolean; text: string; fileName: string; file: File; sample?: boolean };
 const MAX_MB = 5;
 
 interface Props {

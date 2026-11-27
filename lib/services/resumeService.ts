@@ -1,6 +1,7 @@
 import type { Applicant, Resume } from "@/types";
 import { mutate } from "@/lib/store/store";
 import { buildResumeText } from "@/lib/mock/seed";
+import { readFileText } from "@/lib/ai/parse";
 import { uid } from "@/lib/utils/format";
 import { latency, must, nowIso, state } from "./util";
 import { dual } from "./dispatch";
@@ -41,7 +42,7 @@ const mock = {
     await latency(600);
     const s = state();
     const applicant = must(s.applicants.find((a) => a.id === applicantId), "Profile not found.");
-    const raw = await file.text().catch(() => "");
+    const raw = await readFileText(file);
     const readable = (raw.match(/[A-Za-z]{3,}/g) ?? []).length > 25;
     const resume: Resume = { id: uid("rs"), applicantId, fileName: file.name, uploadedAt: nowIso(), text: readable ? raw : buildResumeText(applicant) };
     mutate((st) => ({

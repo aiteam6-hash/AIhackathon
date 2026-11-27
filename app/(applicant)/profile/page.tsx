@@ -79,7 +79,7 @@ export default function ProfilePage() {
   async function applyParsed(useFields: boolean) {
     if (!parsed) return;
     const next: Applicant = useFields
-      ? { ...applicant, name: parsed.name, headline: parsed.headline, location: parsed.location, skills: parsed.skills, experienceYears: parsed.experienceYears, education: parsed.education, work: parsed.work, summary: parsed.summary }
+      ? { ...applicant, name: parsed.name || applicant.name, headline: parsed.headline, location: parsed.location, skills: parsed.skills, experienceYears: parsed.experienceYears, education: parsed.education, work: parsed.work, summary: parsed.summary }
       : applicant;
     await resumeService.saveProfile(next, { fileName: parsed.fileName, text: parsed.text, usedText: parsed.usedText, file: parsed.file });
     toast.success(useFields ? "Resume replaced and profile fields updated." : "Resume replaced. Profile fields kept as they were.");
@@ -132,7 +132,7 @@ export default function ProfilePage() {
       <Modal open={replace || (!!parsed && !resume)} onClose={() => { setReplace(false); setParsed(null); }} title="Replace resume" wide>
         {!parsed ? <ResumeUpload label="Upload the new version" onParsed={setParsed} /> : (
           <div>
-            <p className="text-sm mb-4"><strong>{parsed.fileName}</strong> is ready. {parsed.usedText ? "We extracted fields from its text." : "Its text could not be read in the browser, so any extracted fields come from a sample profile."}</p>
+            <p className="text-sm mb-4"><strong>{parsed.fileName}</strong> is ready. {parsed.usedText ? "We read its text and filled in matching fields." : "We could not find readable text in it (it may be a scan), so your details cannot be updated from it."}</p>
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-primary" onClick={() => applyParsed(true)} disabled={!parsed.usedText}>Replace and update my profile fields</button>
               <button className="btn" onClick={() => applyParsed(false)}>Replace the file only</button>
