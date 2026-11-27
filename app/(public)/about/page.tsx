@@ -5,19 +5,22 @@ export const metadata: Metadata = { title: "About" };
 
 const SECTIONS: { id: string; title: string; body: string[] }[] = [
   { id: "approach", title: "How we use AI", body: [
-    "Every score, summary and rejection message in this product is labelled AI-generated and lists the criteria it was based on. A recruiter can override any score, and the override is saved with a required comment.",
-    "In this demo the AI is simulated: fixed rules read the resume text and produce the same output every time. Nothing is sent to a model or a server.",
+    "Scores, summaries, rejection messages, interview questions and job drafts are written by Claude, an AI model from Anthropic. Every one is labelled AI-generated, and scores list the criteria they were based on. A recruiter can override any score, and the override is saved with a required comment.",
+    "Whether someone meets a hard requirement, such as minimum experience or a required skill, is decided by fixed rules, not by the AI, so the same applicant always gets the same result and the reason is shown.",
+    "AI interviews are optional and approved by the recruiter first. If you answer by voice, your speech is turned into text on your own device and the audio is never recorded or uploaded. The summary looks only at what you said, not your accent, voice or fluency. You can type your answers instead.",
   ] },
   { id: "privacy", title: "Privacy", body: [
-    "This is a browser-only learning project. Profiles, resumes and applications are stored in your browser's local storage and never leave your device. Deleting your account, or using Reset demo data, removes them.",
+    "You sign in with Google, and we receive your name and email. Your profile, resume, applications and interview answers are stored in our database. Resume files sit in private storage, and only recruiters who received your application can see it.",
+    "When Claude scores an application, your resume text and cover note are sent to Anthropic with your name, email and phone number removed. We do not use anyone's data to train models.",
+    "Deleting an account from inside the app is not available yet. To have your data removed, write to the address under Contact. The demo accounts use made-up sample data kept only in your browser.",
   ] },
   { id: "terms", title: "Terms of use", body: [
-    "The jobs, companies and people shown here are invented. Do not enter real personal data you are not comfortable keeping in local storage. No offers made here are real.",
+    "Use real accounts for real applications and hiring decisions only. The demo accounts and their jobs, companies and people are invented, and offers made in the demo are not real.",
   ] },
   { id: "ai", title: "AI use policy", body: [
-    "Scores are an aid to a person's judgement, not a decision. Hard requirements are shown as pass or fail with the reason, so a recruiter can see exactly why someone was filtered out and can reverse it.",
+    "Scores and summaries are an aid to a person's judgement, not a decision. A recruiter decides every outcome and can reverse a filtered-out applicant. The AI is instructed to ignore names, gender, age, religion, caste, nationality and health, and AI interview summaries never assess accent or voice. AI can still make mistakes, so please read the reasoning, not only the number.",
   ] },
-  { id: "contact", title: "Contact", body: [`Questions about the project: ${CONTACT_EMAIL} (placeholder address).`] },
+  { id: "contact", title: "Contact", body: [`Questions or data requests: ${CONTACT_EMAIL} (placeholder address until a real one is set).`] },
 ];
 
 export default function About() {
