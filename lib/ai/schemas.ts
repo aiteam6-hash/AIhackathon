@@ -55,5 +55,7 @@ export const interviewSummaryOut = z.object({
   recommendation: z.string(),
 });
 
-export const AI_TASKS = ["job_description", "criteria", "score", "summary", "feedback", "parse_resume", "interview_questions", "interview_summary"] as const;
+export const screeningQuestionsOut = z.object({ questions: z.array(z.string()) });
+
+export const AI_TASKS = ["job_description", "criteria", "score", "summary", "feedback", "parse_resume", "interview_questions", "interview_summary", "screening_questions"] as const;
 export type AiTask = (typeof AI_TASKS)[number];

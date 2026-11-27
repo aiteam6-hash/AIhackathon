@@ -182,3 +182,15 @@ export async function aiInterviewQuestions(s: Subject, notes?: string): Promise<
 export async function aiInterviewSummary(interviewId: string): Promise<void> {
   await callAi("interview_summary", {}, { interviewId });
 }
+
+/** Drafts written screening questions for the application form, avoiding any the recruiter already has. */
+export async function aiScreeningQuestions(input: {
+  title: string; category: string; level: string; location: string; workMode: string; description?: string;
+  requiredSkills: string[]; preferredSkills: string[]; existing: string[]; count: number;
+}): Promise<string[]> {
+  const { data } = await callAi<{ questions: string[] }>("screening_questions", input);
+  const have = new Set(input.existing.map((q) => q.trim().toLowerCase()));
+  const list = data.questions.map((q) => q.trim()).filter((q) => q && !have.has(q.toLowerCase())).slice(0, input.count);
+  if (!list.length) throw new AiUnavailable("incomplete");
+  return list;
+}

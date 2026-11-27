@@ -1,5 +1,5 @@
 import type { Criterion, Job } from "@/types";
-import { aiCriteria, aiJobDraft, aiParseResume, AiUnavailable } from "@/lib/ai/client";
+import { aiCriteria, aiJobDraft, aiParseResume, aiScreeningQuestions, AiUnavailable } from "@/lib/ai/client";
 import { extractProfile, readFileText, type ParsedProfile } from "@/lib/ai/parse";
 import { sleep } from "../util";
 
@@ -29,6 +29,10 @@ export const realAiMore = {
 
   async suggestCriteria(job: Job): Promise<Criterion[]> {
     return aiCriteria(job);
+  },
+
+  async generateScreeningQuestions(input: Parameters<typeof aiScreeningQuestions>[0]) {
+    return aiScreeningQuestions(input);
   },
 
   async generateJobDescription(input: Parameters<typeof aiJobDraft>[0]) {

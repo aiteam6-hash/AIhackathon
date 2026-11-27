@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AI_MODELS } from "@/lib/config";
 import { ALL_SKILLS } from "@/lib/ai/shared";
-import { criteriaOut, feedbackOut, interviewQuestionsOut, interviewSummaryOut, jobDraftOut, resumeOut, scoreOut, summaryOut, type AiTask } from "@/lib/ai/schemas";
+import { criteriaOut, feedbackOut, interviewQuestionsOut, interviewSummaryOut, jobDraftOut, resumeOut, scoreOut, screeningQuestionsOut, summaryOut, type AiTask } from "@/lib/ai/schemas";
 import type { GenerateOptions } from "./claude";
 
 /**
@@ -61,6 +61,12 @@ const interviewQuestionsInput = z.object({
   recruiterNotes: str(1000).optional(),
 });
 
+const screeningInput = z.object({
+  title: str(200), category: str(40), level: str(20), location: str(100), workMode: str(20),
+  description: str(3000).optional(), requiredSkills: z.array(str(60)).max(30), preferredSkills: z.array(str(60)).max(30),
+  existing: z.array(str(500)).max(8), count: z.number().int().min(1).max(5),
+});
+
 const parseInput = z.object({ text: str(20000) });
 const criteriaInput = z.object({ title: str(200), category: str(40), level: str(20), description: str(3000), requiredSkills: z.array(str(60)).max(30), preferredSkills: z.array(str(60)).max(30) });
 
@@ -114,6 +120,17 @@ Write a short summary for a recruiter, as four parts of one sentence each (two a
 You write the message an applicant sees when they are turned down. Address the applicant as "you". Be polite, honest and specific, never generic and never harsh.
 message: 2 to 3 sentences that thank them, name the role and company, say plainly that they were not taken forward at the given stage, and introduce the details below. reasons: 2 to 4 items, each tied to a failed requirement or a weak criterion from the material, with the concrete fact behind it. improvements: 2 or 3 concrete, doable things that address those reasons. Do not mention other applicants, do not promise a future outcome, and do not invent facts.`,
         user: `Stage where the application ended: ${i.stage}\nRole: ${i.jobTitle} at ${i.companyName}\nRequirements not met: ${JSON.stringify(i.failedChecks)}\nWeakest criteria: ${JSON.stringify(i.weakCriteria)}\nPreferred skills not on the resume: ${i.missingSkills.join(", ") || "none"}\nYears of experience on the profile: ${i.experienceYears}\n${i.salaryNote ? `Pay note: ${i.salaryNote}\n` : ""}`,
+      };
+    }
+    case "screening_questions": {
+      const i = screeningInput.parse(raw);
+      return {
+        model: AI_MODELS.write, effort: "low", schema: screeningQuestionsOut, maxTokens: 1200,
+        system: `${RULES}
+You write the written screening questions applicants answer on the application form for a job. The recruiter reads every answer, so the questions should reveal real experience quickly.
+Write exactly ${i.count} questions. Each one: is a single question, is under 25 words, asks for a specific example or decision from the applicant's own work (not a definition or a yes or no), can be answered well in 3 to 5 sentences, and ties to the role's required skills or day-to-day work. Make the questions different from each other and from the existing ones. Use plain English.
+Never ask about age, gender, marriage, family plans, religion, caste, nationality, health, disability, or salary history. No riddles or trick questions.`,
+        user: `Role: ${i.title} (${i.category}, ${i.level}, ${i.location}, ${i.workMode})\nRequired skills: ${i.requiredSkills.join(", ") || "none"}\nPreferred skills: ${i.preferredSkills.join(", ") || "none"}\n<notes>${i.description?.trim() || "No description yet."}</notes>\nQuestions that already exist (do not repeat): ${JSON.stringify(i.existing)}`,
       };
     }
     case "interview_questions": {

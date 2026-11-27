@@ -50,6 +50,8 @@ export function JobForm({ initial, companies, userId }: Props) {
   const [saving, setSaving] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [drafted, setDrafted] = useState(false);
+  const [draftingQs, setDraftingQs] = useState(false);
+  const [draftedQs, setDraftedQs] = useState(false);
   const isLive = !!initial && initial.status !== "Draft";
   const { register, control, handleSubmit, getValues, setValue, trigger, formState: { errors } } = useForm<V>({
     resolver: zodResolver(schema),
@@ -100,6 +102,29 @@ export function JobForm({ initial, companies, userId }: Props) {
       toast.error(AI_ERRORS[e instanceof Error ? e.message : ""] ?? "The AI could not write a draft right now. Try again.");
     } finally {
       setDrafting(false);
+    }
+  }
+
+  /** Adds AI-written screening questions to whatever the recruiter already has (at most 5 in total). */
+  async function draftQuestionsWithAi() {
+    const v = getValues();
+    if (v.title.trim().length < 3) { toast.error("Enter a job title first."); return; }
+    const existing = v.questions.map((q) => q.text.trim()).filter(Boolean);
+    const count = Math.min(3, 5 - existing.length);
+    if (count <= 0) { toast.error("You already have 5 questions. Remove one to add more."); return; }
+    setDraftingQs(true);
+    try {
+      const fresh = await aiService.generateScreeningQuestions({
+        title: v.title, category: v.category, level: v.level, location: v.location || "not specified", workMode: v.workMode,
+        description: v.description || undefined, requiredSkills: v.requiredSkills, preferredSkills: v.preferredSkills, existing, count,
+      });
+      qs.replace([...existing, ...fresh].map((text) => ({ text })));
+      setDraftedQs(true);
+      toast.success(`${fresh.length} ${fresh.length === 1 ? "question" : "questions"} added. Edit them as you like.`);
+    } catch (e) {
+      toast.error(AI_ERRORS[e instanceof Error ? e.message : ""] ?? "The AI could not write questions right now. Try again.");
+    } finally {
+      setDraftingQs(false);
     }
   }
 
@@ -171,7 +196,12 @@ export function JobForm({ initial, companies, userId }: Props) {
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn-sm mt-3" onClick={() => qs.append({ text: "" })}><Plus size={14} aria-hidden /> Add question</button>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button type="button" className="btn btn-sm" onClick={() => qs.append({ text: "" })} disabled={qs.fields.length >= 5}><Plus size={14} aria-hidden /> Add question</button>
+          <button type="button" className="btn btn-sm" onClick={draftQuestionsWithAi} disabled={draftingQs}>{draftingQs ? "Drafting…" : "Draft with AI"}</button>
+          <span className="text-sm text-muted">Adds up to 3 questions based on the role and skills. Your own questions are kept.</span>
+          {draftedQs && <AIBadge>AI-generated: review before publishing</AIBadge>}
+        </div>
       </fieldset>
 
       <fieldset className="grid gap-5 sm:grid-cols-2">

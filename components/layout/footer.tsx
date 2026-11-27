@@ -45,7 +45,7 @@ export function Footer({ compact }: { compact?: boolean }) {
     return (
       <footer className="border-t border-rule mt-16 py-5 text-xs text-muted">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p>© {year} {PRODUCT_NAME}. Demo build with sample data; AI outputs are simulated.</p>
+          <p>© {year} {PRODUCT_NAME}.</p>
           <p className="flex gap-4">
             <Link href="/about#ai" className="hover:text-ink underline">AI use</Link>
             <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink underline">{CONTACT_EMAIL}</a>

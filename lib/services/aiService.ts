@@ -64,6 +64,17 @@ const mock = {
     return engine.generateRejectionFeedback({ application, applicant, job, stage, company: s.companies.find((c) => c.id === job.companyId) });
   },
 
+  /** Demo accounts get generic questions; real accounts get a Claude draft (see real/ai.ts). */
+  async generateScreeningQuestions(input: { title: string; category: string; level: string; location: string; workMode: string; description?: string; requiredSkills: string[]; preferredSkills: string[]; existing: string[]; count: number }): Promise<string[]> {
+    await latency(700);
+    const pool = [
+      "Describe a piece of work you are proud of and exactly what you did.",
+      "Tell us about a time something went wrong and how you handled it.",
+      "What is the hardest problem you solved in your last role, and how?",
+    ];
+    return pool.filter((q) => !input.existing.includes(q)).slice(0, input.count);
+  },
+
   /** Demo accounts get a simple template; real accounts get a Claude draft (see real/ai.ts). */
   async generateJobDescription(input: { title: string; category: string; level: string; location: string; workMode: string; employmentType: string; notes?: string; requiredSkills?: string[] }) {
     await latency(900);

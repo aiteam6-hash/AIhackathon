@@ -127,7 +127,6 @@ export function AppShell({ role, children }: { role: Role; children: React.React
             ))}
           </ul>
         </nav>
-        <p className="hidden lg:block mt-auto px-5 pb-5 text-xs text-muted">Sample data. AI is simulated.</p>
       </aside>
 
       <div className="min-w-0 flex flex-col">
