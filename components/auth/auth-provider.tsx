@@ -2,11 +2,14 @@
 import { useEffect } from "react";
 import { authService } from "@/lib/services/authService";
 import { useRealAuth } from "@/lib/hooks/useSession";
+import { getState, mutate } from "@/lib/store/store";
 
 /** Keeps the real Supabase session in sync with the UI. Mounted once in the root layout. */
 export function AuthProvider() {
   useEffect(() => {
     let live = true;
+    // Demo accounts no longer exist: drop any demo session an earlier visit left in this browser.
+    if (getState().session) mutate(() => ({ session: null }));
     const refresh = async () => {
       try {
         const r = await authService.loadRealUser();

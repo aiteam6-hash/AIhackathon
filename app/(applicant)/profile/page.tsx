@@ -50,7 +50,7 @@ function Preferences({ applicant }: { applicant: Applicant }) {
         <input id="minsal" className="input" type="number" value={prefs.minSalary} onChange={(e) => setPrefs({ ...prefs, minSalary: Number(e.target.value) })} />
       </div>
       <fieldset>
-        <legend className="field-label">Email notifications <span className="font-normal text-muted">(interface only; no emails are sent in this demo)</span></legend>
+        <legend className="field-label">Email notifications <span className="font-normal text-muted">(interface only; no emails are sent yet)</span></legend>
         <div className="space-y-2">
           {([["statusChanges", "When an application changes stage"], ["newMatches", "When a new job matches my profile"], ["weeklyDigest", "A weekly summary"]] as const).map(([k, l]) => (
             <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={notify[k]} onChange={() => setNotify({ ...notify, [k]: !notify[k] })} /> {l}</label>

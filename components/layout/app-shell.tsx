@@ -11,7 +11,6 @@ import { authService } from "@/lib/services/authService";
 import { notificationsService } from "@/lib/services/notificationsService";
 import { relativeDays } from "@/lib/utils/format";
 import { Menu } from "@/components/ui/menu";
-import { toast } from "@/components/ui/toaster";
 import { Skeleton } from "@/components/ui/states";
 import { Footer } from "./footer";
 
@@ -75,7 +74,7 @@ function NotificationsPanel({ userId }: { userId: string }) {
 
 /** Signed-in frame for one role: guards the route, shows the sidebar, notifications and account menu. */
 export function AppShell({ role, children }: { role: Role; children: React.ReactNode }) {
-  const { ready, user, role: sessionRole, needsRole, isDemo } = useSession();
+  const { ready, user, role: sessionRole, needsRole } = useSession();
   const router = useRouter();
   const path = usePathname();
   const [navOpen, setNavOpen] = useState(false);
@@ -101,7 +100,6 @@ export function AppShell({ role, children }: { role: Role; children: React.React
     );
   }
 
-  const other: Role = role === "applicant" ? "recruiter" : "applicant";
   const nav = NAV[role];
   const isActive = (href: string) => path === href || (href !== "/jobs" && path.startsWith(href + "/")) || (href === "/jobs" && (path === "/jobs" || path.startsWith("/jobs/") || path.startsWith("/apply/")));
 
@@ -137,7 +135,6 @@ export function AppShell({ role, children }: { role: Role; children: React.React
             trigger={<>{user!.name}<ChevronDown size={14} aria-hidden /></>}
             items={[
               { label: `Signed in as ${user!.email}`, disabled: true },
-              ...(isDemo ? [{ label: `Switch to demo ${other}`, separated: true, onClick: async () => { await authService.loginDemo(other); toast.success(`Now viewing the demo ${other} account.`); router.push(other === "recruiter" ? "/recruiter/dashboard" : "/jobs"); } }] : []),
               ...(role === "applicant" ? [{ label: "Profile and settings", href: "/profile" }] : []),
               { label: "Sign out", onClick: async () => { await authService.logout(); router.push("/"); } },
             ]}

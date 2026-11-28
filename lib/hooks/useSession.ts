@@ -32,7 +32,8 @@ export function useSession(): SessionInfo {
   const real = useRealAuth();
 
   if (!mounted) return { ready: false, user: null, role: null, needsRole: false, isDemo: false };
-  if (demoSession && demoUser) return { ready: true, user: demoUser, role: demoSession.role, needsRole: false, isDemo: true };
+  // A real Google account always wins over a leftover demo session.
+  if (demoSession && demoUser && !real.user) return { ready: true, user: demoUser, role: demoSession.role, needsRole: false, isDemo: true };
   if (!real.loaded) return { ready: false, user: null, role: null, needsRole: false, isDemo: false };
   return { ready: true, user: real.user, role: real.user?.role ?? null, needsRole: real.needsRole, isDemo: false };
 }

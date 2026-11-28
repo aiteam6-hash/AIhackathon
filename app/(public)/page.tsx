@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, Check, X } from "lucide-react";
-import { DemoButtons } from "@/components/auth/demo-buttons";
 import { AIBadge, ScoreBar } from "@/components/ui/bits";
 
 const RANKED = [
@@ -39,8 +38,6 @@ export default function Landing() {
             <Link href="/signup?role=recruiter" className="btn btn-primary btn-lg">I&apos;m hiring <ArrowRight size={16} aria-hidden /></Link>
             <Link href="/signup?role=applicant" className="btn btn-lg">I&apos;m looking <ArrowRight size={16} aria-hidden /></Link>
           </div>
-          <p className="mt-6 text-sm text-muted">Or look around first with sample data:</p>
-          <DemoButtons className="mt-2" />
         </div>
 
         <aside aria-label="Example ranked shortlist" className="border border-ink">
@@ -115,13 +112,6 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="container-x py-20 grid gap-8 md:grid-cols-[1.4fr_1fr] items-end">
-        <h2 className="text-4xl md:text-5xl">Try both sides in about two minutes.</h2>
-        <div>
-          <p className="text-muted mb-4">Sample jobs, 60 applicants and a few finished hires are already loaded. Nothing leaves your browser.</p>
-          <DemoButtons />
-        </div>
-      </section>
     </>
   );
 }

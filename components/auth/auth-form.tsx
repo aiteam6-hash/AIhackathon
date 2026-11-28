@@ -5,7 +5,6 @@ import type { Role } from "@/types";
 import { authService } from "@/lib/services/authService";
 import { useSession } from "@/lib/hooks/useSession";
 import { toast } from "@/components/ui/toaster";
-import { DemoButtons } from "./demo-buttons";
 
 function RoleTabs({ role, onChange }: { role: Role; onChange: (r: Role) => void }) {
   return (
@@ -54,11 +53,6 @@ function Inner({ mode }: { mode: "login" | "signup" }) {
             ? "Post roles, filter out applicants who miss the basics, and read the reasoning behind each score."
             : "See which jobs you are eligible for, and get a specific reason if an application does not go forward."}
         </p>
-        <div className="mt-10 border-t border-rule pt-6">
-          <p className="text-sm font-semibold mb-1">Just looking around?</p>
-          <p className="text-sm text-muted mb-3">The demo accounts use made-up sample data stored in your browser.</p>
-          <DemoButtons />
-        </div>
       </div>
 
       <div className="max-w-md w-full">
