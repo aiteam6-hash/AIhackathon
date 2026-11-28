@@ -104,8 +104,8 @@ export function useRecorder() {
   return { recording, seconds, micError, start, stop };
 }
 
-/** Reads text aloud with the browser's built-in voices (free, no download). Prefers an Indian or British English voice. */
-export function useSpeaker() {
+/** Fallback: reads text aloud with the browser's built-in voices (free, no download). Prefers an Indian or British English voice. */
+function useBrowserSpeaker() {
   const [speaking, setSpeaking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -169,4 +169,97 @@ export function useSpeaker() {
 
   useEffect(() => () => { run.current++; if (supported) window.speechSynthesis.cancel(); }, [supported]);
   return { speak, stop, speaking, supported, problem };
+}
+
+/**
+ * Reads text aloud. Uses the Kokoro neural voice (in a worker, on the applicant's device) once it has loaded,
+ * and the browser's built-in voice until then or if it cannot load.
+ */
+export function useSpeaker() {
+  const fallback = useBrowserSpeaker();
+  const worker = useRef<Worker | null>(null);
+  const ctx = useRef<AudioContext | null>(null);
+  const sources = useRef<AudioBufferSourceNode[]>([]);
+  const nextAt = useRef(0);
+  const run = useRef(0);
+  const workerDone = useRef(true);
+  const [status, setStatus] = useState<ModelStatus>("idle");
+  const [progress, setProgress] = useState(0);
+  const [speaking, setSpeaking] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const statusRef = useRef<ModelStatus>("idle");
+  const setSt = (v: ModelStatus) => { statusRef.current = v; setStatus(v); };
+
+  const halt = useCallback(() => {
+    run.current++;
+    worker.current?.postMessage({ type: "stop" });
+    sources.current.forEach((n) => { n.onended = null; try { n.stop(); } catch { /* already stopped */ } });
+    sources.current = [];
+    workerDone.current = true;
+    setSpeaking(false);
+  }, []);
+
+  useEffect(() => () => { run.current++; worker.current?.terminate(); worker.current = null; void ctx.current?.close(); }, []);
+
+  const load = useCallback(() => {
+    if (worker.current || typeof Worker === "undefined") return;
+    setSt("loading"); setProgress(0);
+    const w = new Worker(new URL("./kokoro.worker.ts", import.meta.url), { type: "module" });
+    worker.current = w;
+    w.onmessage = (e: MessageEvent) => {
+      const m = e.data as { type: string; progress?: number; id?: number; audio?: Float32Array; rate?: number };
+      if (m.type === "progress") setProgress(Math.round(m.progress ?? 0));
+      else if (m.type === "ready") setSt("ready");
+      else if (m.type === "error") { setSt("error"); w.terminate(); worker.current = null; }
+      else if (m.id !== run.current) return; // an old question
+      else if (m.type === "chunk" && m.audio && ctx.current) {
+        const c = ctx.current;
+        const buf = c.createBuffer(1, m.audio.length, m.rate ?? 24000);
+        buf.copyToChannel(m.audio as Float32Array<ArrayBuffer>, 0);
+        const src = c.createBufferSource();
+        src.buffer = buf; src.connect(c.destination);
+        const at = Math.max(c.currentTime + 0.03, nextAt.current);
+        src.start(at); nextAt.current = at + buf.duration;
+        sources.current.push(src);
+        src.onended = () => {
+          sources.current = sources.current.filter((x) => x !== src);
+          if (workerDone.current && sources.current.length === 0 && run.current === m.id) setSpeaking(false);
+        };
+        setSpeaking(true);
+      } else if (m.type === "done") {
+        workerDone.current = true;
+        if (sources.current.length === 0) setSpeaking(false);
+      } else if (m.type === "failed") {
+        halt();
+        setProblem("The voice model could not read that. Read the question on screen.");
+      }
+    };
+    w.onerror = () => { setSt("error"); worker.current = null; };
+    w.postMessage({ type: "load" });
+  }, [halt]);
+
+  const speak = useCallback((text: string) => {
+    setProblem(null);
+    if (statusRef.current !== "ready" || !worker.current) { fallback.speak(text); return; }
+    fallback.stop();
+    halt();
+    try {
+      // Created inside a click or the interview start, so the browser allows sound.
+      ctx.current ??= new AudioContext();
+      void ctx.current.resume();
+    } catch { fallback.speak(text); return; }
+    const id = ++run.current;
+    nextAt.current = 0; workerDone.current = false;
+    worker.current.postMessage({ type: "speak", id, text });
+  }, [fallback, halt]);
+
+  const stop = useCallback(() => { halt(); fallback.stop(); }, [halt, fallback]);
+
+  return {
+    speak, stop, load,
+    speaking: speaking || fallback.speaking,
+    supported: fallback.supported || status === "ready",
+    problem: problem ?? fallback.problem,
+    status, progress,
+  };
 }

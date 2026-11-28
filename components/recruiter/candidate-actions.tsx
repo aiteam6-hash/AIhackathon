@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Feedback, Stage } from "@/types";
+import { useSession } from "@/lib/hooks/useSession";
 import { useAsync } from "@/lib/hooks/useAsync";
 import { aiService } from "@/lib/services/aiService";
 import { applicationsService } from "@/lib/services/applicationsService";
@@ -135,11 +136,12 @@ export function HireDialog({ applicationId, onClose }: { applicationId: string |
 /** One place for stage moves that need a dialog (reject, interview, hire) and those that do not. */
 export function useCandidateActions() {
   const [dlg, setDlg] = useState<{ type: "reject" | "schedule" | "hire"; id: string } | null>(null);
+  const { isDemo } = useSession();
   async function move(id: string, to: Stage) {
     if (to === "Rejected") return setDlg({ type: "reject", id });
     if (to === "Interview") return setDlg({ type: "schedule", id });
     if (to === "Hired") return setDlg({ type: "hire", id });
-    try { await applicationsService.moveStage([id], to); toast.success(`Moved to ${to}.`); }
+    try { await applicationsService.moveStage([id], to); toast.success(to === "Shortlisted" && !isDemo ? "Shortlisted. Next, set up an AI interview on the candidate page." : `Moved to ${to}.`); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Could not move this candidate."); }
   }
   const close = () => setDlg(null);

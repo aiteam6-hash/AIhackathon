@@ -92,7 +92,7 @@ export default function CandidatePage() {
       {/* Decision bar */}
       <div role="region" aria-label="Decisions" className="flex flex-wrap items-center gap-2 border border-ink p-3 mb-10">
         {active ? <>
-          {a.stage !== "Shortlisted" && a.stage !== "Interview" && a.stage !== "Offer" && <button className="btn btn-sm btn-primary" onClick={() => actions.move(a.id, "Shortlisted")}>Shortlist</button>}
+          {a.stage !== "Shortlisted" && a.stage !== "Interview" && a.stage !== "Offer" && <button className="btn btn-sm btn-primary" onClick={async () => { await actions.move(a.id, "Shortlisted"); if (!isDemo) setTimeout(() => document.getElementById("aiiv")?.scrollIntoView({ behavior: "smooth", block: "center" }), 400); }}>Shortlist</button>}
           <button className="btn btn-sm" onClick={() => actions.schedule(a.id)}>{a.interview ? "Reschedule interview" : "Schedule interview"}</button>
           {a.stage !== "Offer" && <button className="btn btn-sm" onClick={() => actions.move(a.id, "Offer")}>Move to offer</button>}
           <button className="btn btn-sm" onClick={() => actions.move(a.id, "Hired")}>Mark hired</button>
@@ -137,7 +137,8 @@ export default function CandidatePage() {
             )}
           </section>
 
-          {!isDemo && <AiInterviewPanel applicationId={a.id} stage={a.stage} />}
+          {!isDemo && <AiInterviewPanel applicationId={a.id} stage={a.stage}
+            decide={active && ["Shortlisted", "Interview", "Offer"].includes(a.stage) ? { stage: a.stage, hasInterview: !!a.interview, schedule: () => actions.schedule(a.id), offer: () => actions.move(a.id, "Offer"), reject: () => actions.move(a.id, "Rejected") } : undefined} />}
 
           <section aria-labelledby="resume">
             <h2 id="resume" className="text-3xl mb-3">Resume</h2>

@@ -10,6 +10,8 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { ErrorState, Skeleton } from "@/components/ui/states";
 import { toast } from "@/components/ui/toaster";
 
+export interface Decide { stage: Stage; hasInterview: boolean; schedule: () => void; offer: () => void; reject: () => void }
+
 const ERRORS: Record<string, string> = {
   not_configured: "AI is not switched on for this site yet.",
   slow_down: "Too many AI requests in a minute. Wait a little and try again.",
@@ -67,7 +69,7 @@ function DraftEditor({ interview, onRegenerate, regenerating }: { interview: AiI
   );
 }
 
-function Completed({ interview, onRetry }: { interview: AiInterview; onRetry: () => void }) {
+function Completed({ interview, onRetry, decide }: { interview: AiInterview; onRetry: () => void; decide?: Decide }) {
   const s = interview.summary;
   return (
     <div>
@@ -83,6 +85,14 @@ function Completed({ interview, onRetry }: { interview: AiInterview; onRetry: ()
             <div><p className="eyebrow mb-1">Concerns</p><ul className="list-disc pl-5 text-sm space-y-1">{s.concerns.map((x) => <li key={x}>{x}</li>)}</ul></div>
           </div>
           <p className="border-l-2 border-accent pl-3"><strong>Recommendation:</strong> {s.recommendation}</p>
+          {decide && (
+            <div role="group" aria-label="What next" className="flex flex-wrap items-center gap-2 border border-ink p-3">
+              <span className="text-sm font-semibold px-1">Your decision:</span>
+              <button className="btn btn-sm btn-primary" onClick={decide.schedule}>{decide.hasInterview ? "Reschedule interview" : "Book an interview"}</button>
+              {decide.stage !== "Offer" && <button className="btn btn-sm" onClick={decide.offer}>Move to offer</button>}
+              <button className="btn btn-sm" onClick={decide.reject}>Reject with feedback</button>
+            </div>
+          )}
           <div>
             <p className="eyebrow mb-1">Answer by answer</p>
             <ol className="border-t border-rule">{s.perAnswer.map((a, i) => <li key={i} className="py-2.5 border-b border-rule text-sm"><p className="font-semibold">{i + 1}. {a.question}</p><p>{a.note}</p></li>)}</ol>
@@ -105,7 +115,7 @@ function Completed({ interview, onRetry }: { interview: AiInterview; onRetry: ()
 }
 
 /** Recruiter controls for one candidate's AI interview: draft, edit, approve, then read the summary. */
-export function AiInterviewPanel({ applicationId, stage }: { applicationId: string; stage: Stage }) {
+export function AiInterviewPanel({ applicationId, stage, decide }: { applicationId: string; stage: Stage; decide?: Decide }) {
   const { data, error, loading, reload } = useAsync(() => aiInterviewService.get(applicationId), [applicationId]);
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState("");
@@ -143,7 +153,8 @@ export function AiInterviewPanel({ applicationId, stage }: { applicationId: stri
         <>
           {!open && (
             eligible ? (
-              <div className="border border-rule p-5">
+              <div className="border border-ink border-l-4 border-l-accent p-5">
+                <p className="eyebrow mb-1">Next step</p>
                 <p className="mb-1 font-semibold">Screen this candidate with a short spoken interview</p>
                 <p className="text-sm text-muted mb-4">Claude drafts questions from the role and the resume, you approve them, and the applicant answers by voice or text at a time that suits them. You then get a summary. Nothing reaches the applicant until you approve.</p>
                 <label className="field-label" htmlFor="ainotes">Anything the questions should focus on (optional)</label>
@@ -161,7 +172,7 @@ export function AiInterviewPanel({ applicationId, stage }: { applicationId: stri
             </div>
           )}
           {open?.status === "in_progress" && <p className="border border-rule p-5">The applicant has started the interview and has not submitted it yet.</p>}
-          {open?.status === "completed" && <Completed interview={open} onRetry={() => { summaryFor.current = null; aiInterviewService.generateSummary(open.id).catch((e) => toast.error(say(e, "Could not write the summary."))); }} />}
+          {open?.status === "completed" && <Completed interview={open} decide={decide} onRetry={() => { summaryFor.current = null; aiInterviewService.generateSummary(open.id).catch((e) => toast.error(say(e, "Could not write the summary."))); }} />}
           {data?.status === "cancelled" && !open && eligible && <p className="text-xs text-muted mt-2">The last AI interview was cancelled.</p>}
         </>
       )}
