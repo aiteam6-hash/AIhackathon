@@ -107,22 +107,66 @@ export function useRecorder() {
 /** Reads text aloud with the browser's built-in voices (free, no download). Prefers an Indian or British English voice. */
 export function useSpeaker() {
   const [speaking, setSpeaking] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
+  const run = useRef(0); // bumps on every speak/stop so a stale chain stops itself
+  const keep = useRef<SpeechSynthesisUtterance[]>([]); // Chrome drops utterances that get garbage collected mid-speech
+
+  const stop = useCallback(() => {
+    run.current++;
+    if (supported) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [supported]);
 
   const speak = useCallback((text: string) => {
     if (!supported) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    u.voice = voices.find((v) => v.lang === "en-IN") ?? voices.find((v) => v.lang === "en-GB") ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
-    u.rate = 0.95;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(u);
+    const synth = window.speechSynthesis;
+    const mine = ++run.current;
+    synth.cancel();
+    setProblem(null);
+
+    const pickVoice = () => {
+      const voices = synth.getVoices();
+      return voices.find((v) => v.lang === "en-IN") ?? voices.find((v) => v.lang === "en-GB") ?? voices.find((v) => v.lang.toLowerCase().startsWith("en")) ?? voices[0] ?? null;
+    };
+    // Short pieces, because Chrome silently cuts off a single long utterance after about 15 seconds.
+    const parts = text.match(/[^.!?]+[.!?]*\s*/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
+
+    const begin = () => {
+      if (run.current !== mine) return;
+      const voice = pickVoice();
+      let started = false;
+      const fail = () => { if (run.current === mine && !started) { setSpeaking(false); setProblem("No voice came out. Check your volume, or read the question on screen."); } };
+      const sayNext = (n: number) => {
+        if (run.current !== mine || n >= parts.length) { if (run.current === mine) setSpeaking(false); return; }
+        const u = new SpeechSynthesisUtterance(parts[n]);
+        if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = "en-IN";
+        u.rate = 0.95;
+        u.onstart = () => { started = true; setSpeaking(true); };
+        u.onend = () => { keep.current = keep.current.filter((x) => x !== u); sayNext(n + 1); };
+        u.onerror = (ev) => {
+          keep.current = keep.current.filter((x) => x !== u);
+          if (ev.error === "canceled" || ev.error === "interrupted") return;
+          setSpeaking(false);
+          setProblem(ev.error === "not-allowed" ? "Your browser blocked the voice. Press Hear it again." : "This browser could not read the question aloud. Read it on screen.");
+        };
+        keep.current.push(u);
+        synth.speak(u);
+        if (n === 0) setTimeout(fail, 3000);
+      };
+      sayNext(0);
+    };
+
+    // Chrome needs a moment after cancel(), and loads its voice list late.
+    setTimeout(() => {
+      if (synth.getVoices().length) return begin();
+      let done = false;
+      const go = () => { if (!done) { done = true; synth.removeEventListener("voiceschanged", go); begin(); } };
+      synth.addEventListener("voiceschanged", go);
+      setTimeout(go, 800);
+    }, 120);
   }, [supported]);
 
-  const stop = useCallback(() => { if (supported) window.speechSynthesis.cancel(); setSpeaking(false); }, [supported]);
-  useEffect(() => () => { if (supported) window.speechSynthesis.cancel(); }, [supported]);
-  return { speak, stop, speaking, supported };
+  useEffect(() => () => { run.current++; if (supported) window.speechSynthesis.cancel(); }, [supported]);
+  return { speak, stop, speaking, supported, problem };
 }

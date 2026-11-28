@@ -162,6 +162,7 @@ export function AiInterviewRunner({ interview, jobTitle, companyName }: { interv
       <p className="eyebrow mb-2">Question {i + 1} of {qs.length}</p>
       <h2 className="text-3xl md:text-4xl mb-4">{q.text}</h2>
       <button className="btn btn-sm mb-6" onClick={() => speaker.speak(q.text)} disabled={!speaker.supported} aria-label="Read the question aloud again"><Volume2 size={15} aria-hidden /> {speaker.speaking ? "Reading…" : "Hear it again"}</button>
+      {(speaker.problem || !speaker.supported) && <p role="status" className="text-sm text-muted -mt-4 mb-6">{speaker.problem ?? "This browser has no built-in voice. Read the question on screen."}</p>}
 
       {!typed && (
         <div className="mb-5">

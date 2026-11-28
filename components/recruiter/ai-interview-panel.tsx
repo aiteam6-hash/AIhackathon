@@ -106,7 +106,7 @@ function Completed({ interview, onRetry }: { interview: AiInterview; onRetry: ()
 
 /** Recruiter controls for one candidate's AI interview: draft, edit, approve, then read the summary. */
 export function AiInterviewPanel({ applicationId, stage }: { applicationId: string; stage: Stage }) {
-  const { data, error, reload } = useAsync(() => aiInterviewService.get(applicationId), [applicationId]);
+  const { data, error, loading, reload } = useAsync(() => aiInterviewService.get(applicationId), [applicationId]);
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -139,7 +139,7 @@ export function AiInterviewPanel({ applicationId, stage }: { applicationId: stri
   return (
     <section aria-labelledby="aiiv">
       <div className="flex items-center justify-between gap-2 mb-3"><h2 id="aiiv" className="text-3xl">AI interview</h2>{open && <AIBadge>AI interview</AIBadge>}</div>
-      {error ? <ErrorState message={error} onRetry={reload} /> : !data && !error ? <Skeleton className="h-24 w-full" /> : (
+      {error ? <ErrorState message={error} onRetry={reload} /> : loading && data === undefined ? <Skeleton className="h-24 w-full" /> : (
         <>
           {!open && (
             eligible ? (
