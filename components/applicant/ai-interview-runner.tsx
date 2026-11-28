@@ -37,6 +37,14 @@ export function AiInterviewRunner({ interview, jobTitle, companyName }: { interv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, i]);
 
+  // Speech to text comes first: the natural voice only starts downloading once the answer-recording model is ready (or not needed),
+  // so the two big downloads do not slow each other down and the Start answering button appears sooner.
+  useEffect(() => {
+    if (phase === "intro") return;
+    if (mode === "typed" || whisper.status === "ready" || whisper.status === "error") speaker.load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, mode, whisper.status]);
+
   // Ask before closing the tab mid-interview, because answers are only sent at the end.
   useEffect(() => {
     if (phase !== "question" && phase !== "review") return;
@@ -51,7 +59,6 @@ export function AiInterviewRunner({ interview, jobTitle, companyName }: { interv
     try {
       await aiInterviewService.start(interview.id);
       setMode(m);
-      speaker.load(); // the natural voice downloads in the background; the browser voice reads until it is ready
       if (m === "voice") whisper.load(); // downloads in the background while the first question is read out
       goTo(0, m, {});
       setPhase("question");
